@@ -1,5 +1,6 @@
-import { USERS, UJIAN_LIST, SOAL_LIST } from '../constants';
-import { User, Ujian, Soal, JawabanSiswa, Hasil, AnswerOption } from '../types';
+import { USERS, UJIAN_LIST, SOAL_LIST, HASIL_LIST } from '../constants';
+// FIX: Import 'Role' enum to fix type error.
+import { User, Ujian, Soal, JawabanSiswa, Hasil, AnswerOption, ExamResultWithUser, Role } from '../types';
 
 // Simulate API delay
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -8,6 +9,7 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 let mockUsers: User[] = JSON.parse(JSON.stringify(USERS));
 let mockUjian: Ujian[] = JSON.parse(JSON.stringify(UJIAN_LIST));
 let mockSoal: Soal[] = JSON.parse(JSON.stringify(SOAL_LIST));
+const mockHasil: Hasil[] = JSON.parse(JSON.stringify(HASIL_LIST));
 
 
 export const login = async (username: string, password: string): Promise<User | null> => {
@@ -72,7 +74,8 @@ export const submitExam = async (id_user: number, id_ujian: number, answers: Jaw
     tanggal: new Date(),
     jawaban_siswa: answers,
   };
-
+  // Don't save mock submissions to the list to keep results consistent for analysis
+  // mockHasil.push(result); 
   return result;
 };
 
@@ -223,3 +226,21 @@ export const deleteQuestion = async (questionId: number): Promise<{ success: boo
     }
     return { success: false };
 };
+
+
+// --- Results & Analysis ---
+export const getResultsForExam = async (examId: number): Promise<ExamResultWithUser[]> => {
+    await delay(700);
+    const resultsForExam = mockHasil.filter(h => h.id_ujian === examId);
+    
+    const resultsWithUser: ExamResultWithUser[] = resultsForExam.map(result => {
+        const user = mockUsers.find(u => u.id_user === result.id_user);
+        return {
+            ...result,
+            // FIX: Use Role.SISWA enum instead of string 'siswa' to match the User type.
+            user: user ? { ...user, password: '' } : { id_user: 0, username: 'Unknown', nama_lengkap: 'Unknown User', role: Role.SISWA }
+        };
+    }).sort((a, b) => b.nilai - a.nilai); // Sort by score descending
+
+    return resultsWithUser;
+}

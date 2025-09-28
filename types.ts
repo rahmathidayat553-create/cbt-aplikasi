@@ -58,3 +58,7 @@ export interface Hasil {
   tanggal: Date;
   jawaban_siswa: JawabanSiswa[];
 }
+
+export interface ExamResultWithUser extends Hasil {
+  user: User;
+}

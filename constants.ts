@@ -1,4 +1,4 @@
-import { User, Role, Ujian, Soal, AnswerOption } from './types';
+import { User, Role, Ujian, Soal, AnswerOption, Hasil } from './types';
 
 export const USERS: User[] = [
   { id_user: 1, username: 'admin', password: 'password', nama_lengkap: 'Admin Utama', role: Role.ADMIN },
@@ -112,5 +112,43 @@ export const SOAL_LIST: Soal[] = [
     opsi_c: 'Sitoplasma',
     opsi_d: 'Nukleus',
     jawaban_benar: AnswerOption.B,
+  },
+];
+
+export const HASIL_LIST: Hasil[] = [
+  // Results for Ujian 1 (Matematika)
+  {
+    id_hasil: 1001,
+    id_user: 3, // Siti Aminah
+    id_ujian: 1,
+    nilai: 80.0,
+    benar: 4,
+    salah: 1,
+    tidak_dijawab: 0,
+    tanggal: new Date('2024-09-01T09:30:00'),
+    jawaban_siswa: [
+      { id_soal: 101, jawaban: AnswerOption.C }, // Benar
+      { id_soal: 102, jawaban: AnswerOption.C }, // Benar
+      { id_soal: 103, jawaban: AnswerOption.D }, // Salah, jawaban B
+      { id_soal: 104, jawaban: AnswerOption.C }, // Benar
+      { id_soal: 105, jawaban: AnswerOption.B }, // Benar
+    ],
+  },
+  {
+    id_hasil: 1002,
+    id_user: 4, // Agus Setiawan
+    id_ujian: 1,
+    nilai: 40.0,
+    benar: 2,
+    salah: 2,
+    tidak_dijawab: 1,
+    tanggal: new Date('2024-09-01T09:32:00'),
+    jawaban_siswa: [
+      { id_soal: 101, jawaban: AnswerOption.D }, // Salah, jawaban C
+      { id_soal: 102, jawaban: AnswerOption.C }, // Benar
+      { id_soal: 103, jawaban: null }, // Tidak dijawab
+      { id_soal: 104, jawaban: AnswerOption.B }, // Salah, jawaban C
+      { id_soal: 105, jawaban: AnswerOption.B }, // Benar
+    ],
   },
 ];

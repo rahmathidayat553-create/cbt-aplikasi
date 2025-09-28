@@ -5,9 +5,10 @@ import ExamDetails from './ExamDetails';
 import { Ujian } from '../types';
 import QuestionBank from './QuestionBank';
 import ExamCardPrintView from './ExamCardPrintView';
+import ExamResultsAnalysis from './ExamResultsAnalysis';
 
 const GuruDashboard: React.FC = () => {
-  const [view, setView] = useState<'main' | 'exam_management' | 'exam_details' | 'question_bank' | 'print_cards'>('main');
+  const [view, setView] = useState<'main' | 'exam_management' | 'exam_details' | 'question_bank' | 'print_cards' | 'exam_results_analysis'>('main');
   const [selectedExam, setSelectedExam] = useState<Ujian | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -37,6 +38,9 @@ const GuruDashboard: React.FC = () => {
   if (view === 'print_cards') {
     return <ExamCardPrintView onBack={() => setView('main')} />;
   }
+  if (view === 'exam_results_analysis') {
+    return <ExamResultsAnalysis onBack={() => setView('main')} />;
+  }
 
   const sidebarContent = (
     <>
@@ -61,13 +65,9 @@ const GuruDashboard: React.FC = () => {
       <div className="mb-6">
         <h3 className="text-xl font-bold mb-4">Hasil & Analisis</h3>
         <div className="space-y-2">
-           <button className="w-full flex items-center p-3 bg-slate-100 dark:bg-slate-700 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 rounded-lg transition-colors space-x-3">
+           <button onClick={() => setView('exam_results_analysis')} className="w-full flex items-center p-3 bg-slate-100 dark:bg-slate-700 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 rounded-lg transition-colors space-x-3">
             <IconClipboardList className="h-5 w-5" />
-            <span>Lihat Hasil Ujian</span>
-          </button>
-           <button className="w-full flex items-center p-3 bg-slate-100 dark:bg-slate-700 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 rounded-lg transition-colors space-x-3">
-            <IconChartPie className="h-5 w-5" />
-            <span>Analisis Butir Soal</span>
+            <span>Hasil & Analisis Ujian</span>
           </button>
         </div>
       </div>
