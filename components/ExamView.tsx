@@ -65,20 +65,32 @@ type ProcessedSoal = Soal & { shuffledOptions?: { key: AnswerOption; text: strin
 const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
   const [examStarted, setExamStarted] = useState(false);
   const [showTabSwitchWarning, setShowTabSwitchWarning] = useState(false);
-  const [requiresFullscreenReentry, setRequiresFullscreenReentry] = useState(false);
   const isFinishing = useRef(false);
   
+  // Memoize the callback functions to prevent re-creating them on every render.
+  // This is crucial to stop the useAntiCheat hook's useEffect from re-running unnecessarily,
+  // which was causing the app to exit fullscreen.
+  const handleTabSwitch = useCallback(() => {
+    setShowTabSwitchWarning(true);
+    logActivity(user.id_user, ujian.id_ujian, ActivityType.TAB_SWITCH);
+  }, [user.id_user, ujian.id_ujian]);
+
+  const handleFullscreenEnter = useCallback(() => {
+    // No action needed on enter, but memoized for stability.
+  }, []);
+
+  const handleFullscreenExit = useCallback(() => {
+    // When the user exits fullscreen, just log the activity.
+    // Do not show any warning or force re-entry.
+    if (!isFinishing.current) {
+      logActivity(user.id_user, ujian.id_ujian, ActivityType.FULLSCREEN_EXIT);
+    }
+  }, [user.id_user, ujian.id_ujian]);
+
   useAntiCheat({
-    onTabSwitch: () => {
-      setShowTabSwitchWarning(true);
-      logActivity(user.id_user, ujian.id_ujian, ActivityType.TAB_SWITCH);
-    },
-    onFullscreenExit: () => {
-        if (!isFinishing.current) {
-            logActivity(user.id_user, ujian.id_ujian, ActivityType.FULLSCREEN_EXIT);
-            setRequiresFullscreenReentry(true);
-        }
-    },
+    onTabSwitch: handleTabSwitch,
+    onFullscreenEnter: handleFullscreenEnter,
+    onFullscreenExit: handleFullscreenExit,
     enabled: examStarted
   });
 
@@ -89,7 +101,7 @@ const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
-  const [isNavGridVisible, setIsNavGridVisible] = useState(false); // Hidden by default on mobile
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   const processedQuestions = useMemo<ProcessedSoal[]>(() => {
     let tempQuestions: ProcessedSoal[] = JSON.parse(JSON.stringify(questions));
@@ -147,18 +159,6 @@ const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
     }
   };
   
-  const handleReenterFullscreen = async () => {
-    const element = document.documentElement as any;
-    try {
-      if (element.requestFullscreen) await element.requestFullscreen();
-      else if (element.webkitRequestFullscreen) await element.webkitRequestFullscreen();
-      else if (element.msRequestFullscreen) await element.msRequestFullscreen();
-      setRequiresFullscreenReentry(false);
-    } catch (err) {
-        // User might have denied it, do nothing, they are stuck on the overlay.
-    }
-  };
-
   if (!examStarted) {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-900 p-4">
@@ -182,13 +182,49 @@ const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
       <PreviewModal isOpen={showPreviewModal} onClose={() => setShowPreviewModal(false)} onFinish={() => { setShowPreviewModal(false); setShowConfirmModal(true); }} questions={processedQuestions} answers={answers}/>
       {showTabSwitchWarning && (<div className="bg-yellow-500 text-white p-3 flex justify-between items-center text-sm z-20"><div className="flex items-center"><IconAlertTriangle className="h-5 w-5 mr-2" /><span>PERINGATAN: Beralih dari jendela ujian terdeteksi.</span></div><button onClick={() => setShowTabSwitchWarning(false)}><IconX className="h-5 w-5" /></button></div>)}
       
+       {/* Mobile Navigation Sidebar */}
+      <div className={`fixed inset-0 z-40 md:hidden transition-opacity duration-300 ${isMobileNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <div className="absolute inset-0 bg-black/60" onClick={() => setIsMobileNavOpen(false)}></div>
+          <div className={`relative flex flex-col w-72 h-full bg-white dark:bg-slate-800 shadow-xl transition-transform duration-300 ${isMobileNavOpen ? 'transform-none' : '-translate-x-full'}`}>
+              <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+                  <h3 className="font-bold text-lg">Navigasi Soal</h3>
+                  <button onClick={() => setIsMobileNavOpen(false)} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
+                      <IconX className="h-5 w-5" />
+                  </button>
+              </div>
+              <div className="flex-grow overflow-y-auto p-4">
+                  <QuestionNavigator 
+                      questionCount={processedQuestions.length} 
+                      currentIndex={currentQuestionIndex} 
+                      answers={answers} 
+                      questions={processedQuestions} 
+                      onSelectQuestion={(index) => {
+                          setCurrentQuestionIndex(index);
+                          setIsMobileNavOpen(false);
+                      }} 
+                      flaggedQuestions={flaggedQuestions}
+                  />
+              </div>
+              <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+                  <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm">Dijawab: <span className="font-bold">{Object.values(answers).filter(a => a !== null).length} / {processedQuestions.length}</span></div>
+              </div>
+          </div>
+      </div>
+
       <header className="bg-white dark:bg-slate-800 shadow-md p-3 flex justify-between items-center shrink-0 z-10">
-        <div className="flex items-center space-x-4">
-            <Logo className="h-12 w-12" />
+        <div className="flex items-center space-x-2 md:space-x-4">
+            <button 
+                className="md:hidden p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                onClick={() => setIsMobileNavOpen(true)}
+                aria-label="Tampilkan navigasi soal"
+            >
+                <IconClipboardList className="h-6 w-6" />
+            </button>
+            <Logo className="h-12 w-12 hidden sm:block" />
             <div>
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">SMKN 9 Bulukumba</p>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white">{ujian.nama_paket}</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{ujian.mata_pelajaran}</p>
+                <h1 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white">{ujian.nama_paket}</h1>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">{ujian.mata_pelajaran}</p>
             </div>
         </div>
         <div className="flex items-center space-x-4">
@@ -208,19 +244,8 @@ const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
       </header>
 
       <div className="flex-grow flex flex-col md:flex-row overflow-hidden relative">
-        {requiresFullscreenReentry && (
-            <div className="absolute inset-0 bg-slate-900 bg-opacity-95 flex flex-col items-center justify-center z-30 text-center p-4">
-                <IconAlertTriangle className="h-16 w-16 text-yellow-400 mb-4" />
-                <h2 className="text-3xl font-bold text-white mb-2">Mode Layar Penuh Diperlukan</h2>
-                <p className="text-slate-300 mb-8">Anda keluar dari mode layar penuh. Klik tombol di bawah untuk masuk kembali dan melanjutkan ujian.</p>
-                <button onClick={handleReenterFullscreen} className="flex items-center justify-center bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-6 rounded-lg">
-                    <IconMaximize className="h-5 w-5 mr-2" />
-                    Masuk Kembali ke Layar Penuh
-                </button>
-            </div>
-        )}
-        <main className="flex-grow p-4 md:p-8 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg">
+        <main className="flex-grow p-4 md:p-8 overflow-y-auto flex flex-col">
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg flex-grow">
             <p className="text-slate-500 dark:text-slate-400 mb-4">Soal No. {currentQuestionIndex + 1}</p>
             <div className="text-lg leading-relaxed mb-6" dangerouslySetInnerHTML={{ __html: currentQuestion.pertanyaan }} />
             <div className="space-y-4">
@@ -233,35 +258,25 @@ const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
               ))}
             </div>
           </div>
-        </main>
-        <aside className="w-full md:w-80 bg-white/50 dark:bg-slate-800/50 p-4 shrink-0 border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-700 flex flex-col">
-            <div className="md:hidden mb-4">
-                <button 
-                    onClick={() => setIsNavGridVisible(prev => !prev)}
-                    className="w-full flex items-center justify-center px-4 py-3 bg-slate-200 dark:bg-slate-700 font-bold rounded-lg"
-                    aria-expanded={isNavGridVisible}
-                    aria-controls="question-navigator-container"
-                >
-                    <IconClipboardList className="h-5 w-5 mr-2" />
-                    {isNavGridVisible ? 'Sembunyikan Navigasi' : 'Tampilkan Navigasi Soal'}
-                </button>
+          {/* Mobile-only navigation footer */}
+           <div className="md:hidden mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex justify-between mb-2">
+                    <button onClick={() => setCurrentQuestionIndex(p => Math.max(0, p - 1))} disabled={currentQuestionIndex === 0} className="w-full mr-1 flex items-center justify-center px-4 py-3 bg-slate-200 dark:bg-slate-600 rounded-lg disabled:opacity-50"><IconChevronLeft className="h-5 w-5 mr-1" /> Prev</button>
+                    <button onClick={() => setCurrentQuestionIndex(p => Math.min(processedQuestions.length - 1, p + 1))} disabled={currentQuestionIndex === processedQuestions.length - 1} className="w-full ml-1 flex items-center justify-center px-4 py-3 bg-slate-200 dark:bg-slate-600 rounded-lg disabled:opacity-50">Next <IconChevronRight className="h-5 w-5 ml-1" /></button>
+                </div>
+                 <button onClick={() => handleToggleFlag(currentQuestion.id_soal)} className={`w-full flex items-center justify-center px-4 py-3 font-bold rounded-lg mb-2 ${flaggedQuestions.has(currentQuestion.id_soal) ? 'bg-yellow-500/20 text-yellow-600' : 'bg-slate-200 dark:bg-slate-600'}`}><IconFlag className="h-5 w-5 mr-2" /> {flaggedQuestions.has(currentQuestion.id_soal) ? 'Hapus Tanda' : 'Tandai'}</button>
+                <button onClick={() => setShowConfirmModal(true)} className="w-full flex items-center justify-center px-4 py-3 bg-green-600 text-white font-bold rounded-lg"><IconClipboardCheck className="h-5 w-5 mr-2" /> Selesaikan</button>
             </div>
-
-            <div 
-                id="question-navigator-container"
-                className={`${isNavGridVisible ? 'block' : 'hidden'} md:block flex-grow overflow-y-auto`}
-            >
+        </main>
+        
+        <aside className="hidden md:w-80 bg-white/50 dark:bg-slate-800/50 p-4 shrink-0 border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-700 md:flex md:flex-col">
+            <div className="flex-grow overflow-y-auto">
                 <QuestionNavigator 
                     questionCount={processedQuestions.length} 
                     currentIndex={currentQuestionIndex} 
                     answers={answers} 
                     questions={processedQuestions} 
-                    onSelectQuestion={(index) => {
-                        setCurrentQuestionIndex(index);
-                        if (window.innerWidth < 768) {
-                            setIsNavGridVisible(false);
-                        }
-                    }} 
+                    onSelectQuestion={setCurrentQuestionIndex} 
                     flaggedQuestions={flaggedQuestions}
                 />
             </div>
@@ -273,7 +288,6 @@ const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
                         <button onClick={() => setCurrentQuestionIndex(p => Math.max(0, p - 1))} disabled={currentQuestionIndex === 0} className="w-full mr-1 flex items-center justify-center px-4 py-3 bg-slate-200 dark:bg-slate-600 rounded-lg disabled:opacity-50"><IconChevronLeft className="h-5 w-5 mr-1" /> Prev</button>
                         <button onClick={() => setCurrentQuestionIndex(p => Math.min(processedQuestions.length - 1, p + 1))} disabled={currentQuestionIndex === processedQuestions.length - 1} className="w-full ml-1 flex items-center justify-center px-4 py-3 bg-slate-200 dark:bg-slate-600 rounded-lg disabled:opacity-50">Next <IconChevronRight className="h-5 w-5 ml-1" /></button>
                     </div>
-                    <button onClick={() => handleToggleFlag(currentQuestion.id_soal)} className={`w-full flex items-center justify-center px-4 py-3 font-bold rounded-lg md:hidden ${flaggedQuestions.has(currentQuestion.id_soal) ? 'bg-yellow-500/20 text-yellow-600' : 'bg-slate-200 dark:bg-slate-600'}`}><IconFlag className="h-5 w-5 mr-2" /> {flaggedQuestions.has(currentQuestion.id_soal) ? 'Hapus Tanda' : 'Tandai'}</button>
                     <button onClick={() => setShowPreviewModal(true)} className="w-full flex items-center justify-center px-4 py-3 bg-sky-600 text-white font-bold rounded-lg"><IconClipboardList className="h-5 w-5 mr-2" /> Preview</button>
                     <button onClick={() => setShowConfirmModal(true)} className="w-full flex items-center justify-center px-4 py-3 bg-green-600 text-white font-bold rounded-lg"><IconClipboardCheck className="h-5 w-5 mr-2" /> Selesaikan</button>
                 </div>

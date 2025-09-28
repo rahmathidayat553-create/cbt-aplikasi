@@ -2,11 +2,12 @@ import { useEffect } from 'react';
 
 interface AntiCheatCallbacks {
   onTabSwitch: () => void;
+  onFullscreenEnter: () => void;
   onFullscreenExit: () => void;
   enabled: boolean;
 }
 
-export const useAntiCheat = ({ onTabSwitch, onFullscreenExit, enabled }: AntiCheatCallbacks) => {
+export const useAntiCheat = ({ onTabSwitch, onFullscreenEnter, onFullscreenExit, enabled }: AntiCheatCallbacks) => {
   useEffect(() => {
     if (!enabled) {
       return;
@@ -25,7 +26,9 @@ export const useAntiCheat = ({ onTabSwitch, onFullscreenExit, enabled }: AntiChe
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const handleFullscreenChange = () => {
-        if (!document.fullscreenElement) {
+        if (document.fullscreenElement) {
+            onFullscreenEnter();
+        } else {
             onFullscreenExit();
         }
     };
@@ -42,5 +45,5 @@ export const useAntiCheat = ({ onTabSwitch, onFullscreenExit, enabled }: AntiChe
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [onTabSwitch, onFullscreenExit, enabled]);
+  }, [onTabSwitch, onFullscreenEnter, onFullscreenExit, enabled]);
 };

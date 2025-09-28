@@ -16,16 +16,74 @@ export const ThemeContext = React.createContext<{
   toggleTheme: () => void;
 } | null>(null);
 
-// FIX: Define a more specific type for an exam that includes details from its question package.
+// Define a more specific type for an exam that includes details from its question package.
 type FormattedUjian = Ujian & { nama_paket: string; mata_pelajaran: string; jumlah_soal: number };
 
+const APP_STATE_KEY = 'cbt-app-session';
+
 const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [currentView, setCurrentView] = useState<'login' | 'dashboard' | 'exam' | 'results'>('login');
-  // FIX: Use the more specific FormattedUjian type for the active exam state.
-  const [activeExam, setActiveExam] = useState<FormattedUjian | null>(null);
-  const [examResult, setExamResult] = useState<Hasil | null>(null);
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+    const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+    
+    // Initialize state from sessionStorage to persist across refreshes
+    const [user, setUser] = useState<User | null>(() => {
+        try {
+            const savedState = sessionStorage.getItem(APP_STATE_KEY);
+            return savedState ? JSON.parse(savedState).user : null;
+        } catch {
+            return null;
+        }
+    });
+
+    const [currentView, setCurrentView] = useState<'login' | 'dashboard' | 'exam' | 'results'>(() => {
+        try {
+            const savedState = sessionStorage.getItem(APP_STATE_KEY);
+            return savedState ? JSON.parse(savedState).currentView : 'login';
+        } catch {
+            return 'login';
+        }
+    });
+
+    const [activeExam, setActiveExam] = useState<FormattedUjian | null>(() => {
+        try {
+            const savedState = sessionStorage.getItem(APP_STATE_KEY);
+            const parsed = savedState ? JSON.parse(savedState) : null;
+            if (parsed && parsed.activeExam) {
+                // Re-hydrate Date objects that are stringified in JSON
+                parsed.activeExam.waktu_mulai = new Date(parsed.activeExam.waktu_mulai);
+                return parsed.activeExam;
+            }
+            return null;
+        } catch {
+            return null;
+        }
+    });
+
+    const [examResult, setExamResult] = useState<Hasil | null>(() => {
+        try {
+            const savedState = sessionStorage.getItem(APP_STATE_KEY);
+            const parsed = savedState ? JSON.parse(savedState) : null;
+            if (parsed && parsed.examResult) {
+                 // Re-hydrate Date objects
+                parsed.examResult.tanggal = new Date(parsed.examResult.tanggal);
+                return parsed.examResult;
+            }
+            return null;
+        } catch {
+            return null;
+        }
+    });
+
+    // Effect to save state to sessionStorage on change
+    useEffect(() => {
+        if (user && currentView !== 'login') {
+            const stateToSave = { user, currentView, activeExam, examResult };
+            sessionStorage.setItem(APP_STATE_KEY, JSON.stringify(stateToSave));
+        } else {
+            // Clear storage if logged out or on login page
+            sessionStorage.removeItem(APP_STATE_KEY);
+        }
+    }, [user, currentView, activeExam, examResult]);
+
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -50,12 +108,15 @@ const App: React.FC = () => {
       setCurrentView('login');
       setActiveExam(null);
       setExamResult(null);
+      sessionStorage.removeItem(APP_STATE_KEY); // Clear session on logout
     },
   }), [user]);
 
-  // FIX: Update the type of the `ujian` parameter to match the data passed from SiswaDashboard.
-  const handleStartExam = (ujian: FormattedUjian) => {
-    setActiveExam(ujian);
+  const handleStartExam = (ujian: Ujian) => {
+    // The object from SiswaDashboard is actually a FormattedUjian.
+    // We change the signature here to `Ujian` to fix a props type mismatch in the intermediary Dashboard component,
+    // and then cast it back, as we control the input source.
+    setActiveExam(ujian as FormattedUjian);
     setCurrentView('exam');
   };
 
@@ -75,17 +136,19 @@ const App: React.FC = () => {
       case 'login':
         return <Login />;
       case 'dashboard':
+         if (!user) return <Login />;
         return <Dashboard onStartExam={handleStartExam} />;
       case 'exam':
         if (activeExam && user) {
-          // This previously had an error because activeExam was of type Ujian, but now it's FormattedUjian.
           return <ExamView ujian={activeExam} user={user} onFinishExam={handleFinishExam} />;
         }
+         if (!user) return <Login />;
         return <Dashboard onStartExam={handleStartExam} />; // Fallback
       case 'results':
-        if (examResult && activeExam) {
+        if (examResult && activeExam && user) {
           return <ResultsView result={examResult} exam={activeExam} onBackToDashboard={handleBackToDashboard} />;
         }
+        if (!user) return <Login />;
         return <Dashboard onStartExam={handleStartExam} />; // Fallback
       default:
         return <Login />;
