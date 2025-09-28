@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { User, Ujian, Hasil } from './types';
+import { User, Ujian, Hasil, ActivityType } from './types';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import ExamView from './components/ExamView';
 import ResultsView from './components/ResultsView';
+import { logActivity } from './services/api';
 
 export const AuthContext = React.createContext<{
   user: User | null;
@@ -104,13 +105,17 @@ const App: React.FC = () => {
       setCurrentView('dashboard');
     },
     logout: () => {
+      // Log logout activity if it happens during an exam
+      if (user && activeExam) {
+          logActivity(user.id_user, activeExam.id_ujian, ActivityType.LOGOUT);
+      }
       setUser(null);
       setCurrentView('login');
       setActiveExam(null);
       setExamResult(null);
       sessionStorage.removeItem(APP_STATE_KEY); // Clear session on logout
     },
-  }), [user]);
+  }), [user, activeExam]);
 
   const handleStartExam = (ujian: Ujian) => {
     // The object from SiswaDashboard is actually a FormattedUjian.
@@ -123,6 +128,7 @@ const App: React.FC = () => {
   const handleFinishExam = (result: Hasil) => {
     setExamResult(result);
     setCurrentView('results');
+    setActiveExam(null); // Clear active exam after finishing
   };
 
   const handleBackToDashboard = () => {
@@ -145,8 +151,8 @@ const App: React.FC = () => {
          if (!user) return <Login />;
         return <Dashboard onStartExam={handleStartExam} />; // Fallback
       case 'results':
-        if (examResult && activeExam && user) {
-          return <ResultsView result={examResult} exam={activeExam} onBackToDashboard={handleBackToDashboard} />;
+        if (examResult && user) { // activeExam might be cleared, so we find it from result
+          return <ResultsView result={examResult} exam={activeExam as FormattedUjian} onBackToDashboard={handleBackToDashboard} />;
         }
         if (!user) return <Login />;
         return <Dashboard onStartExam={handleStartExam} />; // Fallback

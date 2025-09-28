@@ -24,30 +24,40 @@ export const login = async (username: string, password: string): Promise<User | 
   return null;
 };
 
-export const getAvailableExams = async (): Promise<(Ujian & {nama_paket: string, mata_pelajaran: string, jumlah_soal: number})[]> => {
+export const getAvailableExams = async (id_user?: number): Promise<(Ujian & {nama_paket: string, mata_pelajaran: string, jumlah_soal: number})[]> => {
   await delay(300);
-  // In a real app, this would filter based on current time, user's class, etc.
-  // We only return active exams to students
-  return mockUjian
-    .filter(u => u.is_active)
-    .map(ujian => {
-        const paket = mockPaketSoal.find(p => p.id_paket === ujian.id_paket);
-        const mapel = mockMataPelajaran.find(m => m.id_mapel === paket?.id_mapel);
-        const jumlah_soal = mockSoal.filter(s => s.id_paket === ujian.id_paket).length;
-        
-        return {
-            ...ujian,
-            nama_paket: paket?.nama_paket || "Nama Paket Tidak Ditemukan",
-            mata_pelajaran: mapel?.nama_mapel || "Mapel Tidak Ditemukan",
-            jumlah_soal,
-        }
-    });
+  let activeExams = mockUjian.filter(u => u.is_active);
+
+  // If a user ID is provided, filter out exams they have already completed.
+  if (id_user) {
+      const completedExamIds = new Set(mockHasil.filter(h => h.id_user === id_user).map(h => h.id_ujian));
+      activeExams = activeExams.filter(u => !completedExamIds.has(u.id_ujian));
+  }
+  
+  return activeExams.map(ujian => {
+      const paket = mockPaketSoal.find(p => p.id_paket === ujian.id_paket);
+      const mapel = mockMataPelajaran.find(m => m.id_mapel === paket?.id_mapel);
+      const jumlah_soal = mockSoal.filter(s => s.id_paket === ujian.id_paket).length;
+      
+      return {
+          ...ujian,
+          nama_paket: paket?.nama_paket || "Nama Paket Tidak Ditemukan",
+          mata_pelajaran: mapel?.nama_mapel || "Mapel Tidak Ditemukan",
+          jumlah_soal,
+      }
+  });
 };
 
-export const verifyToken = async (token: string): Promise<(Ujian & {nama_paket: string, mata_pelajaran: string, jumlah_soal: number}) | null> => {
+export const verifyToken = async (token: string, id_user: number): Promise<(Ujian & {nama_paket: string, mata_pelajaran: string, jumlah_soal: number}) | null> => {
     await delay(500);
     const exam = mockUjian.find(u => u.token.toUpperCase() === token.toUpperCase() && u.is_active);
     if (!exam) return null;
+
+    // Check if the user has already completed this exam
+    const existingResult = mockHasil.find(h => h.id_user === id_user && h.id_ujian === exam.id_ujian);
+    if (existingResult) {
+        return null; // Exam already taken
+    }
 
     const paket = mockPaketSoal.find(p => p.id_paket === exam.id_paket);
     const mapel = mockMataPelajaran.find(m => m.id_mapel === paket?.id_mapel);
@@ -105,6 +115,10 @@ export const submitExam = async (id_user: number, id_ujian: number, answers: Jaw
     tanggal: new Date(),
     jawaban_siswa: answers,
   };
+
+  // Persist the result in the mock database for the "take once" logic to work
+  mockHasil.push(result);
+
   return result;
 };
 
@@ -295,6 +309,7 @@ export const getResultsForExam = async (examId: number): Promise<ExamResultWithU
 export const logActivity = async (id_user: number, id_ujian: number, activity_type: ActivityType): Promise<{ success: boolean }> => {
     const newLog: ActivityLog = { id_log: Date.now() + Math.random(), id_user, id_ujian, activity_type, timestamp: new Date() };
     mockActivityLogs.push(newLog);
+    console.log("Activity Logged:", newLog); // For debugging
     return { success: true };
 };
 export const getActivityLogsForExam = async (examId: number): Promise<ActivityLog[]> => {

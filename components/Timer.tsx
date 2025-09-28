@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { IconClock } from './icons/Icons';
 
 interface TimerProps {
-  durationInMinutes: number;
+  endTime: number;
   onTimeUp: () => void;
 }
 
-const Timer: React.FC<TimerProps> = ({ durationInMinutes, onTimeUp }) => {
-  const [timeLeft, setTimeLeft] = useState(durationInMinutes * 60);
+const Timer: React.FC<TimerProps> = ({ endTime, onTimeUp }) => {
+  const [timeLeft, setTimeLeft] = useState(() => {
+      const remaining = Math.round((endTime - Date.now()) / 1000);
+      return Math.max(0, remaining);
+  });
 
   useEffect(() => {
     if (timeLeft <= 0) {
@@ -16,7 +19,7 @@ const Timer: React.FC<TimerProps> = ({ durationInMinutes, onTimeUp }) => {
     }
 
     const intervalId = setInterval(() => {
-      setTimeLeft(prevTime => prevTime - 1);
+      setTimeLeft(prevTime => Math.max(0, prevTime - 1));
     }, 1000);
 
     return () => clearInterval(intervalId);

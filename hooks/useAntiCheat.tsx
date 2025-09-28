@@ -1,13 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 interface AntiCheatCallbacks {
-  onTabSwitch: () => void;
-  onFullscreenEnter: () => void;
+  onVisibilityHidden: () => void;
   onFullscreenExit: () => void;
+  onBrowserUnload: () => void;
   enabled: boolean;
 }
 
-export const useAntiCheat = ({ onTabSwitch, onFullscreenEnter, onFullscreenExit, enabled }: AntiCheatCallbacks) => {
+export const useAntiCheat = ({ onVisibilityHidden, onFullscreenExit, onBrowserUnload, enabled }: AntiCheatCallbacks) => {
   useEffect(() => {
     if (!enabled) {
       return;
@@ -20,30 +20,34 @@ export const useAntiCheat = ({ onTabSwitch, onFullscreenEnter, onFullscreenExit,
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        onTabSwitch();
+        onVisibilityHidden();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const handleFullscreenChange = () => {
-        if (document.fullscreenElement) {
-            onFullscreenEnter();
-        } else {
+        if (!document.fullscreenElement) {
             onFullscreenExit();
         }
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
 
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      onBrowserUnload();
+      // Standard practice to prevent accidental closing, though not all browsers respect it.
+      e.preventDefault();
+      e.returnValue = 'Apakah Anda yakin ingin meninggalkan halaman? Progres ujian akan disimpan.';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
 
     return () => {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(err => console.error("Could not exit fullscreen:", err));
-      }
       document.removeEventListener('copy', preventDefault);
       document.removeEventListener('paste', preventDefault);
       document.removeEventListener('contextmenu', preventDefault);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [onTabSwitch, onFullscreenEnter, onFullscreenExit, enabled]);
+  }, [onVisibilityHidden, onFullscreenExit, onBrowserUnload, enabled]);
 };

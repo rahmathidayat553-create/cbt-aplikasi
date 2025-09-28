@@ -47,11 +47,16 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({ onBack }) => {
   };
 
   const getActivityLabel = (type: ActivityType) => {
+    // FIX: Replaced incorrect `ActivityType.TAB_SWITCH` with `ActivityType.VISIBILITY_HIDDEN` and added handlers for all possible activity types.
     switch (type) {
-      case ActivityType.TAB_SWITCH:
-        return { text: 'Beralih Tab', color: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' };
+      case ActivityType.VISIBILITY_HIDDEN:
+        return { text: 'Beralih Tab/Jendela', color: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' };
       case ActivityType.FULLSCREEN_EXIT:
         return { text: 'Keluar Layar Penuh', color: 'bg-red-500/20 text-red-600 dark:text-red-400' };
+      case ActivityType.BROWSER_UNLOAD:
+        return { text: 'Browser Ditutup/Refresh', color: 'bg-orange-500/20 text-orange-600 dark:text-orange-400' };
+      case ActivityType.LOGOUT:
+        return { text: 'Logout', color: 'bg-purple-500/20 text-purple-600 dark:text-purple-400' };
       default:
         return { text: 'Tidak Dikenal', color: 'bg-slate-500/20 text-slate-600 dark:text-slate-400' };
     }

@@ -13,8 +13,10 @@ export enum AnswerOption {
 }
 
 export enum ActivityType {
-  TAB_SWITCH = 'tab_switch',
+  VISIBILITY_HIDDEN = 'visibility_hidden',
   FULLSCREEN_EXIT = 'fullscreen_exit',
+  BROWSER_UNLOAD = 'browser_unload',
+  LOGOUT = 'logout',
 }
 
 export interface User {

@@ -24,14 +24,17 @@ const SiswaDashboard: React.FC<SiswaDashboardProps> = ({ onStartExam }) => {
   const [statusFilter, setStatusFilter] = useState<ExamStatus>('all');
 
   useEffect(() => {
-    const fetchExams = async () => {
-      setLoading(true);
-      const availableExams = await getAvailableExams();
-      setExams(availableExams);
-      setLoading(false);
-    };
-    fetchExams();
-  }, []);
+    if (auth?.user) {
+      const fetchExams = async () => {
+        setLoading(true);
+        // Fetch exams available for this specific user (filters out completed ones)
+        const availableExams = await getAvailableExams(auth.user!.id_user);
+        setExams(availableExams);
+        setLoading(false);
+      };
+      fetchExams();
+    }
+  }, [auth?.user]);
   
   const subjects = useMemo(() => {
     const uniqueSubjects = new Set(exams.map(exam => exam.mata_pelajaran));
@@ -61,14 +64,15 @@ const SiswaDashboard: React.FC<SiswaDashboardProps> = ({ onStartExam }) => {
 
   const handleJoinExam = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth?.user) return;
     setError('');
     setJoinLoading(true);
     try {
-      const exam = await verifyToken(token);
+      const exam = await verifyToken(token, auth.user.id_user);
       if (exam) {
         onStartExam(exam as FormattedUjian);
       } else {
-        setError('Token tidak valid atau ujian tidak aktif.');
+        setError('Token tidak valid, ujian tidak aktif, atau Anda sudah menyelesaikan ujian ini.');
       }
     } catch (err) {
       setError('Terjadi kesalahan. Silakan coba lagi.');
@@ -166,7 +170,7 @@ const SiswaDashboard: React.FC<SiswaDashboardProps> = ({ onStartExam }) => {
               })}
               </div>
           ) : (
-              <p className="text-slate-500 dark:text-slate-400 text-center py-8">Tidak ada ujian yang cocok dengan filter Anda.</p>
+              <p className="text-slate-500 dark:text-slate-400 text-center py-8">Tidak ada ujian yang tersedia atau semua ujian telah diselesaikan.</p>
           )}
       </div>
     </div>

@@ -64,33 +64,30 @@ type ProcessedSoal = Soal & { shuffledOptions?: { key: AnswerOption; text: strin
 
 const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
   const [examStarted, setExamStarted] = useState(false);
-  const [showTabSwitchWarning, setShowTabSwitchWarning] = useState(false);
+  const [showVisibilityWarning, setShowVisibilityWarning] = useState(false);
   const isFinishing = useRef(false);
+  const storageKey = `cbt-exam-progress-${user.id_user}-${ujian.id_ujian}`;
   
-  // Memoize the callback functions to prevent re-creating them on every render.
-  // This is crucial to stop the useAntiCheat hook's useEffect from re-running unnecessarily,
-  // which was causing the app to exit fullscreen.
-  const handleTabSwitch = useCallback(() => {
-    setShowTabSwitchWarning(true);
-    logActivity(user.id_user, ujian.id_ujian, ActivityType.TAB_SWITCH);
+  const handleVisibilityHidden = useCallback(() => {
+    setShowVisibilityWarning(true);
+    logActivity(user.id_user, ujian.id_ujian, ActivityType.VISIBILITY_HIDDEN);
   }, [user.id_user, ujian.id_ujian]);
 
-  const handleFullscreenEnter = useCallback(() => {
-    // No action needed on enter, but memoized for stability.
-  }, []);
+  const handleBrowserUnload = useCallback(() => {
+    logActivity(user.id_user, ujian.id_ujian, ActivityType.BROWSER_UNLOAD);
+    // Note: State saving is handled by useEffect, which should trigger before unload.
+  }, [user.id_user, ujian.id_ujian]);
 
   const handleFullscreenExit = useCallback(() => {
-    // When the user exits fullscreen, just log the activity.
-    // Do not show any warning or force re-entry.
     if (!isFinishing.current) {
       logActivity(user.id_user, ujian.id_ujian, ActivityType.FULLSCREEN_EXIT);
     }
   }, [user.id_user, ujian.id_ujian]);
 
   useAntiCheat({
-    onTabSwitch: handleTabSwitch,
-    onFullscreenEnter: handleFullscreenEnter,
+    onVisibilityHidden: handleVisibilityHidden,
     onFullscreenExit: handleFullscreenExit,
+    onBrowserUnload: handleBrowserUnload,
     enabled: examStarted
   });
 
@@ -102,6 +99,7 @@ const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(new Set());
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [endTime, setEndTime] = useState<number | null>(null);
 
   const processedQuestions = useMemo<ProcessedSoal[]>(() => {
     let tempQuestions: ProcessedSoal[] = JSON.parse(JSON.stringify(questions));
@@ -121,19 +119,60 @@ const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
     if (document.fullscreenElement) await document.exitFullscreen();
     const studentAnswers: JawabanSiswa[] = processedQuestions.map(q => ({ id_soal: q.id_soal, jawaban: answers[q.id_soal] || null }));
     const result = await submitExam(user.id_user, ujian.id_ujian, studentAnswers);
+    localStorage.removeItem(storageKey); // Clear saved progress on finish
     onFinishExam(result);
-  }, [user.id_user, ujian.id_ujian, answers, onFinishExam, processedQuestions]);
+  }, [user.id_user, ujian.id_ujian, answers, onFinishExam, processedQuestions, storageKey]);
 
   useEffect(() => {
-    const fetchQuestions = async () => {
+    const loadStateAndQuestions = async () => {
       setLoading(true);
+
+      // Load questions from API
       const fetchedQuestions = await getQuestionsForExam(ujian.id_ujian);
       setQuestions(fetchedQuestions);
-      setAnswers(fetchedQuestions.reduce((acc, q) => ({ ...acc, [q.id_soal]: null }), {}));
+
+      // Try to load saved progress from localStorage
+      const savedState = localStorage.getItem(storageKey);
+      if (savedState) {
+        try {
+          const { answers: savedAnswers, currentIndex, flagged, endTime: savedEndTime } = JSON.parse(savedState);
+          setAnswers(savedAnswers);
+          setCurrentQuestionIndex(currentIndex);
+          setFlaggedQuestions(new Set(flagged));
+          setEndTime(savedEndTime);
+        } catch {
+          // If parsing fails, start fresh
+          initializeNewExamState(fetchedQuestions);
+        }
+      } else {
+        initializeNewExamState(fetchedQuestions);
+      }
       setLoading(false);
     };
-    fetchQuestions();
-  }, [ujian.id_ujian]);
+
+    const initializeNewExamState = (qs: Soal[]) => {
+      setAnswers(qs.reduce((acc, q) => ({ ...acc, [q.id_soal]: null }), {}));
+      setCurrentQuestionIndex(0);
+      setFlaggedQuestions(new Set());
+      setEndTime(Date.now() + ujian.durasi * 60 * 1000);
+    };
+    
+    loadStateAndQuestions();
+  }, [ujian.id_ujian, storageKey, ujian.durasi]);
+
+  // Save state to localStorage on any change
+  useEffect(() => {
+    if (!loading && examStarted && endTime) {
+      const stateToSave = {
+        answers,
+        currentIndex: currentQuestionIndex,
+        flagged: Array.from(flaggedQuestions),
+        endTime
+      };
+      localStorage.setItem(storageKey, JSON.stringify(stateToSave));
+    }
+  }, [answers, currentQuestionIndex, flaggedQuestions, endTime, storageKey, loading, examStarted]);
+
 
   const handleAnswerSelect = useCallback((id_soal: number, answer: AnswerOption) => setAnswers(prev => ({ ...prev, [id_soal]: answer })), []);
   
@@ -172,7 +211,7 @@ const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
     );
   }
 
-  if (loading || processedQuestions.length === 0) return <div className="min-h-screen flex items-center justify-center"><IconLoader className="h-12 w-12 animate-spin text-primary-500" /></div>;
+  if (loading || processedQuestions.length === 0 || !endTime) return <div className="min-h-screen flex items-center justify-center"><IconLoader className="h-12 w-12 animate-spin text-primary-500" /></div>;
   
   const currentQuestion = processedQuestions[currentQuestionIndex];
   
@@ -180,7 +219,7 @@ const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-900">
       {showConfirmModal && <ConfirmationModal onConfirm={() => { setShowConfirmModal(false); finishExam(); }} onCancel={() => setShowConfirmModal(false)} />}
       <PreviewModal isOpen={showPreviewModal} onClose={() => setShowPreviewModal(false)} onFinish={() => { setShowPreviewModal(false); setShowConfirmModal(true); }} questions={processedQuestions} answers={answers}/>
-      {showTabSwitchWarning && (<div className="bg-yellow-500 text-white p-3 flex justify-between items-center text-sm z-20"><div className="flex items-center"><IconAlertTriangle className="h-5 w-5 mr-2" /><span>PERINGATAN: Beralih dari jendela ujian terdeteksi.</span></div><button onClick={() => setShowTabSwitchWarning(false)}><IconX className="h-5 w-5" /></button></div>)}
+      {showVisibilityWarning && (<div className="bg-yellow-500 text-white p-3 flex justify-between items-center text-sm z-20"><div className="flex items-center"><IconAlertTriangle className="h-5 w-5 mr-2" /><span>PERINGATAN: Beralih dari jendela ujian terdeteksi. Aktivitas tercatat.</span></div><button onClick={() => setShowVisibilityWarning(false)}><IconX className="h-5 w-5" /></button></div>)}
       
        {/* Mobile Navigation Sidebar */}
       <div className={`fixed inset-0 z-40 md:hidden transition-opacity duration-300 ${isMobileNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
@@ -239,7 +278,7 @@ const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
                 <IconFlag className="h-5 w-5" />
                 <span>{flaggedQuestions.has(currentQuestion.id_soal) ? 'Hapus Tanda' : 'Tandai Soal'}</span>
             </button>
-            <Timer durationInMinutes={ujian.durasi} onTimeUp={finishExam} />
+            <Timer endTime={endTime} onTimeUp={finishExam} />
         </div>
       </header>
 
