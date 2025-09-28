@@ -16,6 +16,8 @@ export const UJIAN_LIST: Ujian[] = [
     durasi: 90,
     token: 'MATEM24',
     jumlah_soal: 5,
+    acak_soal: true,
+    acak_opsi: true,
   },
   {
     id_ujian: 2,
@@ -24,7 +26,9 @@ export const UJIAN_LIST: Ujian[] = [
     waktu_mulai: new Date('2024-09-02T10:00:00'),
     durasi: 45,
     token: 'BIOSEL24',
-    jumlah_soal: 3,
+    jumlah_soal: 4,
+    acak_soal: false,
+    acak_opsi: true,
   },
 ];
 
@@ -38,7 +42,9 @@ export const SOAL_LIST: Soal[] = [
     opsi_b: 'x = 4',
     opsi_c: 'x = 5',
     opsi_d: 'x = 10',
+    opsi_e: 'x = 2.5',
     jawaban_benar: AnswerOption.C,
+    jumlah_opsi: 5,
   },
   {
     id_soal: 102,
@@ -49,6 +55,7 @@ export const SOAL_LIST: Soal[] = [
     opsi_c: '64 cm²',
     opsi_d: '128 cm²',
     jawaban_benar: AnswerOption.C,
+    jumlah_opsi: 4,
   },
   {
     id_soal: 103,
@@ -59,6 +66,7 @@ export const SOAL_LIST: Soal[] = [
     opsi_c: '3.16',
     opsi_d: '3.18',
     jawaban_benar: AnswerOption.B,
+    jumlah_opsi: 4,
     gambar: 'https://picsum.photos/400/200?random=1'
   },
   {
@@ -70,6 +78,7 @@ export const SOAL_LIST: Soal[] = [
     opsi_c: '1/2',
     opsi_d: '2/3',
     jawaban_benar: AnswerOption.C,
+    jumlah_opsi: 4,
   },
   {
     id_soal: 105,
@@ -80,6 +89,7 @@ export const SOAL_LIST: Soal[] = [
     opsi_c: '270°',
     opsi_d: '360°',
     jawaban_benar: AnswerOption.B,
+    jumlah_opsi: 4,
   },
   // Biologi
   {
@@ -91,6 +101,7 @@ export const SOAL_LIST: Soal[] = [
     opsi_c: 'Nukleus (Inti Sel)',
     opsi_d: 'Membran Sel',
     jawaban_benar: AnswerOption.C,
+    jumlah_opsi: 4,
     gambar: 'https://picsum.photos/400/250?random=2'
   },
   {
@@ -102,6 +113,7 @@ export const SOAL_LIST: Soal[] = [
     opsi_c: 'Badan Golgi',
     opsi_d: 'Retikulum Endoplasma',
     jawaban_benar: AnswerOption.A,
+    jumlah_opsi: 4,
   },
   {
     id_soal: 203,
@@ -112,6 +124,22 @@ export const SOAL_LIST: Soal[] = [
     opsi_c: 'Sitoplasma',
     opsi_d: 'Nukleus',
     jawaban_benar: AnswerOption.B,
+    jumlah_opsi: 4,
+  },
+  {
+    id_soal: 204,
+    id_ujian: 2,
+    pertanyaan: 'Perhatikan video berikut tentang pembelahan sel. Proses apa yang dijelaskan?',
+    opsi_a: 'Mitosis',
+    opsi_b: 'Meiosis',
+    opsi_c: 'Amitosis',
+    opsi_d: 'Sitokinesis',
+    jawaban_benar: AnswerOption.A,
+    jumlah_opsi: 4,
+    video: {
+      type: 'youtube',
+      url: 'https://www.youtube.com/watch?v=L0k-enzoeOM'
+    }
   },
 ];
 

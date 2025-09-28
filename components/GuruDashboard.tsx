@@ -1,19 +1,34 @@
 import React, { useState } from 'react';
-import { IconPlus, IconUpload, IconFileText, IconClipboardList, IconDownload, IconChartPie, IconClipboardCheck, IconPanelRightClose, IconPanelRightOpen, IconIdCard } from './icons/Icons';
+import { IconPlus, IconUpload, IconFileText, IconClipboardList, IconDownload, IconChartPie, IconClipboardCheck, IconPanelRightClose, IconPanelRightOpen, IconIdCard, IconUsers, IconActivity } from './icons/Icons';
 import ExamManagement from './ExamManagement';
 import ExamDetails from './ExamDetails';
 import { Ujian } from '../types';
 import QuestionBank from './QuestionBank';
 import ExamCardPrintView from './ExamCardPrintView';
 import ExamResultsAnalysis from './ExamResultsAnalysis';
+import ParticipantManagement from './ParticipantManagement';
+import ActivityMonitor from './ActivityMonitor';
+import QuestionImport from './QuestionImport';
 
 const GuruDashboard: React.FC = () => {
-  const [view, setView] = useState<'main' | 'exam_management' | 'exam_details' | 'question_bank' | 'print_cards' | 'exam_results_analysis'>('main');
+  const [view, setView] = useState<'main' | 'exam_management' | 'exam_details' | 'question_bank' | 'print_cards' | 'exam_results_analysis' | 'participant_management' | 'activity_monitor' | 'question_import'>('main');
   const [selectedExam, setSelectedExam] = useState<Ujian | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const handleDownloadTemplate = () => {
-    alert('Fungsi download template soal via Excel/CSV akan diimplementasikan di sini.');
+    const ws_data = [{ 
+        pertanyaan: "Contoh: Apa ibukota Indonesia?",
+        opsi_a: "Surabaya",
+        opsi_b: "Jakarta",
+        opsi_c: "Bandung",
+        opsi_d: "Medan",
+        opsi_e: "Makassar (opsional, kosongkan jika 4 opsi)",
+        jawaban_benar: "B"
+    }];
+    const ws = window.XLSX.utils.json_to_sheet(ws_data);
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, "Template Soal");
+    window.XLSX.writeFile(wb, "template_import_soal.xlsx");
   };
   
   const handleSelectExam = (exam: Ujian) => {
@@ -35,12 +50,22 @@ const GuruDashboard: React.FC = () => {
   if (view === 'question_bank') {
     return <QuestionBank onBack={() => setView('main')} />;
   }
+   if (view === 'question_import') {
+    return <QuestionImport onBack={() => setView('main')} />;
+  }
   if (view === 'print_cards') {
     return <ExamCardPrintView onBack={() => setView('main')} />;
   }
   if (view === 'exam_results_analysis') {
     return <ExamResultsAnalysis onBack={() => setView('main')} />;
   }
+   if (view === 'participant_management') {
+    return <ParticipantManagement onBack={() => setView('main')} />;
+  }
+  if (view === 'activity_monitor') {
+    return <ActivityMonitor onBack={() => setView('main')} />;
+  }
+
 
   const sidebarContent = (
     <>
@@ -55,7 +80,7 @@ const GuruDashboard: React.FC = () => {
             <IconFileText className="h-5 w-5" />
             <span>Bank Soal</span>
           </button>
-          <button className="w-full flex items-center p-3 bg-slate-100 dark:bg-slate-700 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 rounded-lg transition-colors space-x-3">
+          <button onClick={() => setView('question_import')} className="w-full flex items-center p-3 bg-slate-100 dark:bg-slate-700 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 rounded-lg transition-colors space-x-3">
             <IconUpload className="h-5 w-5" />
             <span>Import Soal</span>
           </button>
@@ -69,11 +94,19 @@ const GuruDashboard: React.FC = () => {
             <IconClipboardList className="h-5 w-5" />
             <span>Hasil & Analisis Ujian</span>
           </button>
+           <button onClick={() => setView('activity_monitor')} className="w-full flex items-center p-3 bg-slate-100 dark:bg-slate-700 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 rounded-lg transition-colors space-x-3">
+            <IconActivity className="h-5 w-5" />
+            <span>Aktivitas Peserta Ujian</span>
+          </button>
         </div>
       </div>
        <div className="mb-6">
         <h3 className="text-xl font-bold mb-4">Administrasi</h3>
         <div className="space-y-2">
+           <button onClick={() => setView('participant_management')} className="w-full flex items-center p-3 bg-slate-100 dark:bg-slate-700 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 rounded-lg transition-colors space-x-3">
+            <IconUsers className="h-5 w-5" />
+            <span>Data Peserta Ujian</span>
+          </button>
            <button onClick={() => setView('print_cards')} className="w-full flex items-center p-3 bg-slate-100 dark:bg-slate-700 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 rounded-lg transition-colors space-x-3">
             <IconIdCard className="h-5 w-5" />
             <span>Cetak Kartu Ujian</span>

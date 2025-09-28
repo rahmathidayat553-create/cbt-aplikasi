@@ -1,6 +1,6 @@
 import { USERS, UJIAN_LIST, SOAL_LIST, HASIL_LIST } from '../constants';
 // FIX: Import 'Role' enum to fix type error.
-import { User, Ujian, Soal, JawabanSiswa, Hasil, AnswerOption, ExamResultWithUser, Role } from '../types';
+import { User, Ujian, Soal, JawabanSiswa, Hasil, AnswerOption, ExamResultWithUser, Role, ActivityLog, ActivityType } from '../types';
 
 // Simulate API delay
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -10,6 +10,7 @@ let mockUsers: User[] = JSON.parse(JSON.stringify(USERS));
 let mockUjian: Ujian[] = JSON.parse(JSON.stringify(UJIAN_LIST));
 let mockSoal: Soal[] = JSON.parse(JSON.stringify(SOAL_LIST));
 const mockHasil: Hasil[] = JSON.parse(JSON.stringify(HASIL_LIST));
+const mockActivityLogs: ActivityLog[] = [];
 
 
 export const login = async (username: string, password: string): Promise<User | null> => {
@@ -133,7 +134,9 @@ export const addExam = async (examData: Omit<Ujian, 'id_ujian' | 'token' | 'juml
         ...examData, 
         id_ujian: Date.now() + Math.random(),
         token: generateToken(),
-        jumlah_soal: 0, 
+        jumlah_soal: 0,
+        acak_soal: !!examData.acak_soal,
+        acak_opsi: !!examData.acak_opsi,
     };
     mockUjian.push(newExam);
     return newExam;
@@ -173,11 +176,16 @@ export const getAllQuestions = async (): Promise<Soal[]> => {
 };
 
 export const addQuestion = async (questionData: Omit<Soal, 'id_soal'>): Promise<Soal> => {
-    await delay(500);
+    await delay(200); // Shorter delay for batch imports
     const newQuestion: Soal = {
         ...questionData,
         id_soal: Date.now() + Math.random(),
     };
+    
+    if (newQuestion.jumlah_opsi === 4) {
+        delete newQuestion.opsi_e;
+    }
+
     mockSoal.push(newQuestion);
     if (newQuestion.id_ujian) {
         updateExamQuestionCount(newQuestion.id_ujian);
@@ -195,6 +203,10 @@ export const updateQuestion = async (questionId: number, questionData: Partial<O
         
         const updatedQuestion = mockSoal[questionIndex];
         const newExamId = updatedQuestion.id_ujian;
+
+        if (updatedQuestion.jumlah_opsi === 4) {
+            delete updatedQuestion.opsi_e;
+        }
 
         if (originalExamId) {
             updateExamQuestionCount(originalExamId);
@@ -244,3 +256,33 @@ export const getResultsForExam = async (examId: number): Promise<ExamResultWithU
 
     return resultsWithUser;
 }
+
+// --- Activity Monitoring ---
+export const logActivity = async (id_user: number, id_ujian: number, activity_type: ActivityType): Promise<{ success: boolean }> => {
+    // No delay, should be fast
+    const newLog: ActivityLog = {
+        id_log: Date.now() + Math.random(),
+        id_user,
+        id_ujian,
+        activity_type,
+        timestamp: new Date(),
+    };
+    mockActivityLogs.push(newLog);
+    console.log("Activity Logged: ", newLog);
+    return { success: true };
+};
+
+export const getActivityLogsForExam = async (examId: number): Promise<ActivityLog[]> => {
+    await delay(600);
+    const logs = mockActivityLogs.filter(log => log.id_ujian === examId);
+
+    const logsWithUser = logs.map(log => {
+        const user = mockUsers.find(u => u.id_user === log.id_user);
+        return {
+            ...log,
+            user: user ? { ...user, password: '' } : undefined
+        };
+    }).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()); // Sort by most recent first
+
+    return logsWithUser;
+};

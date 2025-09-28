@@ -19,6 +19,8 @@ const ExamFormModal: React.FC<{
     mata_pelajaran: '',
     durasi: 60,
     waktu_mulai: new Date(),
+    acak_soal: false,
+    acak_opsi: false,
   });
   const [copied, setCopied] = useState(false);
 
@@ -29,6 +31,8 @@ const ExamFormModal: React.FC<{
         mata_pelajaran: initialData.mata_pelajaran,
         durasi: initialData.durasi,
         waktu_mulai: new Date(initialData.waktu_mulai),
+        acak_soal: initialData.acak_soal || false,
+        acak_opsi: initialData.acak_opsi || false,
       });
     } else {
       setFormData({
@@ -36,15 +40,17 @@ const ExamFormModal: React.FC<{
         mata_pelajaran: '',
         durasi: 60,
         waktu_mulai: new Date(),
+        acak_soal: false,
+        acak_opsi: false,
       });
     }
   }, [initialData, isOpen]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({ 
         ...prev, 
-        [name]: type === 'number' ? parseInt(value, 10) : value 
+        [name]: type === 'checkbox' ? checked : type === 'number' ? parseInt(value, 10) : value 
     }));
   };
 
@@ -110,6 +116,29 @@ const ExamFormModal: React.FC<{
             <input name="mata_pelajaran" value={formData.mata_pelajaran} onChange={handleChange} placeholder="Mata Pelajaran" className="shadow appearance-none border border-slate-300 dark:border-slate-700 rounded-lg w-full py-3 px-4 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white leading-tight focus:outline-none focus:ring-2 focus:ring-primary-500" required />
             <input name="durasi" type="number" value={formData.durasi} onChange={handleChange} placeholder="Durasi (dalam menit)" className="shadow appearance-none border border-slate-300 dark:border-slate-700 rounded-lg w-full py-3 px-4 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white leading-tight focus:outline-none focus:ring-2 focus:ring-primary-500" required />
             <input name="waktu_mulai" type="datetime-local" value={toLocalISOString(formData.waktu_mulai)} onChange={handleDateChange} className="shadow appearance-none border border-slate-300 dark:border-slate-700 rounded-lg w-full py-3 px-4 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white leading-tight focus:outline-none focus:ring-2 focus:ring-primary-500" required />
+            
+            <div className="flex items-start space-x-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="acak_soal"
+                    checked={formData.acak_soal}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-300">Acak Urutan Soal</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="acak_opsi"
+                    checked={formData.acak_opsi}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-300">Acak Opsi Jawaban</span>
+                </label>
+            </div>
           </div>
           <div className="flex justify-end space-x-4 mt-8">
             <button type="button" onClick={onClose} className="px-6 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-700 transition">Batal</button>

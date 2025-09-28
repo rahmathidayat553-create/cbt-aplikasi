@@ -1,11 +1,14 @@
 // FIX: Declare XLSX on the window object to resolve TypeScript errors.
+// This is necessary when the 'xlsx' library is loaded via a script tag.
 declare global {
   interface Window { XLSX: any; }
 }
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useContext } from 'react';
 import { Ujian, ExamResultWithUser, Soal } from '../types';
 import { getExams, getResultsForExam, getQuestionsForExam } from '../services/api';
-import { IconArrowLeft, IconLoader, IconChartPie, IconUsers, IconFileSpreadsheet, IconCheckCircle } from './icons/Icons';
+import { IconArrowLeft, IconLoader, IconFileSpreadsheet, IconTrophy } from './icons/Icons';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { ThemeContext } from '../App';
 
 interface ExamResultsAnalysisProps {
   onBack: () => void;
@@ -33,6 +36,7 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
   const [questions, setQuestions] = useState<Soal[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailTab, setDetailTab] = useState<DetailTab>('results');
+  const themeContext = useContext(ThemeContext);
 
   useEffect(() => {
     const fetchExams = async () => {
@@ -63,6 +67,26 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
     setResults([]);
     setQuestions([]);
   };
+  
+  const scoreDistributionData = useMemo(() => {
+    if (results.length === 0) return [];
+
+    const bins = Array(10).fill(0).map((_, i) => ({
+      range: `${i * 10 + 1}-${(i + 1) * 10}`,
+      count: 0,
+    }));
+    
+    bins[9].range = "91-100"; // Adjust last bin label
+
+    results.forEach(result => {
+      if (result.nilai > 0) {
+        const binIndex = Math.min(Math.floor((result.nilai - 1) / 10), 9);
+        bins[binIndex].count++;
+      }
+    });
+
+    return bins;
+  }, [results]);
 
   const itemAnalysisData = useMemo<ItemAnalysisData[]>(() => {
     if (questions.length === 0 || results.length === 0) return [];
@@ -122,9 +146,10 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
   }, [questions, results]);
 
   const exportResultsToExcel = () => {
-    const data = results.map(res => ({
+    const data = results.map((res, index) => ({
+      "Peringkat": index + 1,
       "Nama Siswa": res.user.nama_lengkap,
-      "Kelas": res.user.kelas,
+      "Kelas": res.user.kelas || 'N/A',
       "Nilai": res.nilai.toFixed(2),
       "Benar": res.benar,
       "Salah": res.salah,
@@ -174,6 +199,12 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
     }
     
     if (view === 'details' && selectedExam) {
+      const topStudents = results.slice(0, 3);
+      const rankColors = [
+        'text-yellow-400', // Gold
+        'text-slate-400',  // Silver
+        'text-orange-400'  // Bronze
+      ];
       return (
         <div>
           <button onClick={handleBackToList} className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white mb-4">
@@ -185,9 +216,48 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
               <h3 className="text-2xl font-bold">{selectedExam.nama_ujian}</h3>
               <p className="text-slate-500 dark:text-slate-400">Total Peserta: {results.length}</p>
             </div>
-            {detailTab === 'results' && <button onClick={exportResultsToExcel} className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg text-sm"><IconFileSpreadsheet className="h-4 w-4" /><span>Export Hasil</span></button>}
-            {detailTab === 'analysis' && <button onClick={exportAnalysisToExcel} className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg text-sm"><IconFileSpreadsheet className="h-4 w-4" /><span>Export Analisis</span></button>}
+            {detailTab === 'results' && results.length > 0 && <button onClick={exportResultsToExcel} className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg text-sm"><IconFileSpreadsheet className="h-4 w-4" /><span>Export Hasil</span></button>}
+            {detailTab === 'analysis' && results.length > 0 && <button onClick={exportAnalysisToExcel} className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg text-sm"><IconFileSpreadsheet className="h-4 w-4" /><span>Export Analisis</span></button>}
           </div>
+
+          {topStudents.length > 0 && (
+            <div className="mb-8">
+                <h4 className="text-xl font-bold mb-4">Peringkat Teratas</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {topStudents.map((student, index) => (
+                        <div key={student.id_hasil} className="p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 flex items-center space-x-4">
+                            <IconTrophy className={`h-10 w-10 shrink-0 ${rankColors[index]}`} />
+                            <div>
+                                <p className="font-bold text-slate-900 dark:text-white truncate">{student.user.nama_lengkap}</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Skor: <span className="font-bold text-lg text-primary-500 dark:text-primary-400">{student.nilai.toFixed(1)}</span></p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+          )}
+
+          {scoreDistributionData.length > 0 && (
+             <div className="mb-8">
+                <h4 className="text-xl font-bold mb-4">Distribusi Skor</h4>
+                <div className="h-64 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={scoreDistributionData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={themeContext?.theme === 'dark' ? '#334155' : '#e2e8f0'} />
+                      <XAxis dataKey="range" tick={{ fill: themeContext?.theme === 'dark' ? '#94a3b8' : '#64748b', fontSize: 12 }} />
+                      <YAxis allowDecimals={false} tick={{ fill: themeContext?.theme === 'dark' ? '#94a3b8' : '#64748b', fontSize: 12 }} />
+                      <Tooltip
+                        cursor={{ fill: 'rgba(100, 116, 139, 0.1)' }}
+                        contentStyle={themeContext?.theme === 'dark' ? { backgroundColor: '#1e293b', border: '1px solid #334155' } : {}}
+                        labelStyle={{ color: themeContext?.theme === 'dark' ? '#cbd5e1' : '#1e293b' }}
+                      />
+                      <Bar dataKey="count" name="Jumlah Siswa" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+          )}
+
 
           <div className="border-b border-slate-200 dark:border-slate-700 mb-4">
             <nav className="flex space-x-4" aria-label="Tabs">

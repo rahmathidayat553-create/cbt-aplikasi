@@ -1,38 +1,46 @@
 import { useEffect } from 'react';
 
-export const useAntiCheat = () => {
-  useEffect(() => {
-    // Attempt to enter fullscreen
-    const enterFullscreen = () => {
-      document.documentElement.requestFullscreen().catch(err => {
-        console.warn(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-      });
-    };
-    enterFullscreen();
+interface AntiCheatCallbacks {
+  onTabSwitch: () => void;
+  onFullscreenExit: () => void;
+  enabled: boolean;
+}
 
-    // Disable copy, paste, and context menu
+export const useAntiCheat = ({ onTabSwitch, onFullscreenExit, enabled }: AntiCheatCallbacks) => {
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const preventDefault = (e: Event) => e.preventDefault();
     document.addEventListener('copy', preventDefault);
     document.addEventListener('paste', preventDefault);
     document.addEventListener('contextmenu', preventDefault);
 
-    // Handle visibility change (tab switching)
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        alert('Peringatan: Anda telah beralih dari tab ujian. Aktivitas ini dapat dicatat.');
+        onTabSwitch();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Cleanup function
+    const handleFullscreenChange = () => {
+        if (!document.fullscreenElement) {
+            onFullscreenExit();
+        }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+
     return () => {
       if (document.fullscreenElement) {
-        document.exitFullscreen();
+        document.exitFullscreen().catch(err => console.error("Could not exit fullscreen:", err));
       }
       document.removeEventListener('copy', preventDefault);
       document.removeEventListener('paste', preventDefault);
       document.removeEventListener('contextmenu', preventDefault);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, []);
+  }, [onTabSwitch, onFullscreenExit, enabled]);
 };

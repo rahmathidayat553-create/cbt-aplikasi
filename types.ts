@@ -9,6 +9,12 @@ export enum AnswerOption {
   B = 'B',
   C = 'C',
   D = 'D',
+  E = 'E',
+}
+
+export enum ActivityType {
+  TAB_SWITCH = 'tab_switch',
+  FULLSCREEN_EXIT = 'fullscreen_exit',
 }
 
 export interface User {
@@ -28,8 +34,15 @@ export interface Soal {
   opsi_b: string;
   opsi_c: string;
   opsi_d: string;
+  opsi_e?: string;
   jawaban_benar: AnswerOption;
-  gambar?: string; // URL to image
+  jumlah_opsi?: 4 | 5;
+  gambar?: string; // URL to image or object URL
+  audio?: string; // URL to audio or object URL
+  video?: {
+    type: 'youtube' | 'upload';
+    url: string;
+  };
 }
 
 export interface Ujian {
@@ -40,6 +53,8 @@ export interface Ujian {
   durasi: number; // in minutes
   token: string;
   jumlah_soal: number;
+  acak_soal?: boolean;
+  acak_opsi?: boolean;
 }
 
 export interface JawabanSiswa {
@@ -61,4 +76,13 @@ export interface Hasil {
 
 export interface ExamResultWithUser extends Hasil {
   user: User;
+}
+
+export interface ActivityLog {
+  id_log: number;
+  id_user: number;
+  id_ujian: number;
+  activity_type: ActivityType;
+  timestamp: Date;
+  user?: User;
 }
