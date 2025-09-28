@@ -2,12 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { User, Role } from '../types';
 import { USERS } from '../constants'; // Import mock data directly to get passwords
 import { IconArrowLeft, IconLoader, IconPrinter, IconUserSquare } from './icons/Icons';
+import { Logo } from './Logo';
 
 const ExamCard: React.FC<{ user: User }> = ({ user }) => (
     <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 shadow-md w-full break-inside-avoid">
-        <div className="text-center border-b pb-2 mb-2 border-slate-200 dark:border-slate-700">
-             <h3 className="font-bold text-base text-slate-900 dark:text-white">KARTU PESERTA UJIAN</h3>
-             <p className="text-xs text-slate-500 dark:text-slate-400">CBT Application</p>
+        <div className="flex items-center justify-center space-x-2 text-center border-b pb-2 mb-2 border-slate-200 dark:border-slate-700">
+            <Logo className="h-8 w-8" />
+            <div>
+                 <h3 className="font-bold text-sm text-slate-900 dark:text-white">KARTU PESERTA UJIAN</h3>
+                 <p className="text-xs text-slate-500 dark:text-slate-400">CBT-SIAMAK | SMKN 9 Bulukumba</p>
+            </div>
         </div>
         <div className="flex items-center space-x-4 mt-4">
             <div className="w-20 h-24 border-2 border-dashed flex items-center justify-center text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-700/50 rounded-md">

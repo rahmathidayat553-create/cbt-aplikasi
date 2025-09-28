@@ -1,7 +1,8 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../App';
 import { login as apiLogin } from '../services/api';
-import { IconBook, IconLoader } from './icons/Icons';
+import { IconLoader } from './icons/Icons';
+import { Logo } from './Logo';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -32,9 +33,9 @@ const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-            <IconBook className="mx-auto h-16 w-16 text-primary-500" />
-            <h1 className="text-4xl font-bold text-slate-900 dark:text-white mt-4">CBT Application</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-2">Silakan login untuk melanjutkan</p>
+            <Logo className="mx-auto h-24 w-24" />
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-white mt-4">CBT-SIAMAK</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">SMKN 9 Bulukumba</p>
         </div>
         <div className="bg-white dark:bg-slate-800 shadow-2xl rounded-2xl p-8">
           <form onSubmit={handleSubmit}>

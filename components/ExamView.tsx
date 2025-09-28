@@ -5,6 +5,7 @@ import Timer from './Timer';
 import QuestionNavigator from './QuestionNavigator';
 import { useAntiCheat } from '../hooks/useAntiCheat';
 import { IconLoader, IconChevronLeft, IconChevronRight, IconFlag, IconClipboardCheck, IconClipboardList, IconAlertTriangle, IconX, IconMaximize } from './icons/Icons';
+import { Logo } from './Logo';
 
 interface ExamViewProps {
   ujian: Ujian & { nama_paket: string; mata_pelajaran: string; jumlah_soal: number };
@@ -191,10 +192,14 @@ const ExamView: React.FC<ExamViewProps> = ({ ujian, user, onFinishExam }) => {
       <PreviewModal isOpen={showPreviewModal} onClose={() => setShowPreviewModal(false)} onFinish={() => { setShowPreviewModal(false); setShowConfirmModal(true); }} questions={processedQuestions} answers={answers}/>
       {showTabSwitchWarning && (<div className="bg-yellow-500 text-white p-3 flex justify-between items-center text-sm z-20"><div className="flex items-center"><IconAlertTriangle className="h-5 w-5 mr-2" /><span>PERINGATAN: Beralih dari jendela ujian terdeteksi.</span></div><button onClick={() => setShowTabSwitchWarning(false)}><IconX className="h-5 w-5" /></button></div>)}
       
-      <header className="bg-white dark:bg-slate-800 shadow-md p-4 flex justify-between items-center shrink-0 z-10">
-        <div>
-          <h1 className="text-xl font-bold">{ujian.nama_paket}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{ujian.mata_pelajaran}</p>
+      <header className="bg-white dark:bg-slate-800 shadow-md p-3 flex justify-between items-center shrink-0 z-10">
+        <div className="flex items-center space-x-4">
+            <Logo className="h-12 w-12" />
+            <div>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">SMKN 9 Bulukumba</p>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white">{ujian.nama_paket}</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{ujian.mata_pelajaran}</p>
+            </div>
         </div>
         <div className="flex items-center space-x-4">
              <button 
