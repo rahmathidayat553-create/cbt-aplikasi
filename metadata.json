@@ -1,0 +1,5 @@
+{
+  "name": "CBT (Computer Based Test) Application",
+  "description": "A comprehensive web-based Computer Based Test (CBT) application for local use, featuring multi-role authentication, exam management, real-time test-taking with anti-cheat features, and automated result analysis.",
+  "requestFramePermissions": []
+}
