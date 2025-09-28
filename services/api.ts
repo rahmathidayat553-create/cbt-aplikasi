@@ -1,6 +1,5 @@
-import { USERS, UJIAN_LIST, SOAL_LIST, HASIL_LIST } from '../constants';
-// FIX: Import 'Role' enum to fix type error.
-import { User, Ujian, Soal, JawabanSiswa, Hasil, AnswerOption, ExamResultWithUser, Role, ActivityLog, ActivityType } from '../types';
+import { USERS, UJIAN_LIST, SOAL_LIST, HASIL_LIST, MATA_PELAJARAN_LIST, PAKET_SOAL_LIST } from '../constants';
+import { User, Ujian, Soal, JawabanSiswa, Hasil, AnswerOption, ExamResultWithUser, Role, ActivityLog, ActivityType, MataPelajaran, PaketSoal } from '../types';
 
 // Simulate API delay
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -9,6 +8,8 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 let mockUsers: User[] = JSON.parse(JSON.stringify(USERS));
 let mockUjian: Ujian[] = JSON.parse(JSON.stringify(UJIAN_LIST));
 let mockSoal: Soal[] = JSON.parse(JSON.stringify(SOAL_LIST));
+let mockMataPelajaran: MataPelajaran[] = JSON.parse(JSON.stringify(MATA_PELAJARAN_LIST));
+let mockPaketSoal: PaketSoal[] = JSON.parse(JSON.stringify(PAKET_SOAL_LIST.map(p => ({ id_paket: p.id_paket, id_mapel: p.id_mapel, nama_paket: p.nama_paket }))));
 const mockHasil: Hasil[] = JSON.parse(JSON.stringify(HASIL_LIST));
 const mockActivityLogs: ActivityLog[] = [];
 
@@ -17,33 +18,62 @@ export const login = async (username: string, password: string): Promise<User | 
   await delay(500);
   const user = mockUsers.find(u => u.username === username && u.password === password);
   if (user) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
   return null;
 };
 
-export const getAvailableExams = async (): Promise<Ujian[]> => {
+export const getAvailableExams = async (): Promise<(Ujian & {nama_paket: string, mata_pelajaran: string, jumlah_soal: number})[]> => {
   await delay(300);
   // In a real app, this would filter based on current time, user's class, etc.
-  return mockUjian;
+  // We only return active exams to students
+  return mockUjian
+    .filter(u => u.is_active)
+    .map(ujian => {
+        const paket = mockPaketSoal.find(p => p.id_paket === ujian.id_paket);
+        const mapel = mockMataPelajaran.find(m => m.id_mapel === paket?.id_mapel);
+        const jumlah_soal = mockSoal.filter(s => s.id_paket === ujian.id_paket).length;
+        
+        return {
+            ...ujian,
+            nama_paket: paket?.nama_paket || "Nama Paket Tidak Ditemukan",
+            mata_pelajaran: mapel?.nama_mapel || "Mapel Tidak Ditemukan",
+            jumlah_soal,
+        }
+    });
 };
 
-export const verifyToken = async (token: string): Promise<Ujian | null> => {
+export const verifyToken = async (token: string): Promise<(Ujian & {nama_paket: string, mata_pelajaran: string, jumlah_soal: number}) | null> => {
     await delay(500);
-    const exam = mockUjian.find(u => u.token.toUpperCase() === token.toUpperCase());
-    return exam || null;
+    const exam = mockUjian.find(u => u.token.toUpperCase() === token.toUpperCase() && u.is_active);
+    if (!exam) return null;
+
+    const paket = mockPaketSoal.find(p => p.id_paket === exam.id_paket);
+    const mapel = mockMataPelajaran.find(m => m.id_mapel === paket?.id_mapel);
+    const jumlah_soal = mockSoal.filter(s => s.id_paket === exam.id_paket).length;
+    
+    return {
+      ...exam,
+      nama_paket: paket?.nama_paket || "Nama Paket Tidak Ditemukan",
+      mata_pelajaran: mapel?.nama_mapel || "Mapel Tidak Ditemukan",
+      jumlah_soal,
+    }
 }
 
 export const getQuestionsForExam = async (id_ujian: number): Promise<Soal[]> => {
   await delay(1000);
-  return mockSoal.filter(s => s.id_ujian === id_ujian);
+  const exam = mockUjian.find(u => u.id_ujian === id_ujian);
+  if (!exam) return [];
+  return mockSoal.filter(s => s.id_paket === exam.id_paket);
 };
 
 export const submitExam = async (id_user: number, id_ujian: number, answers: JawabanSiswa[]): Promise<Hasil> => {
   await delay(1000);
-  const questions = mockSoal.filter(s => s.id_ujian === id_ujian);
+  const exam = mockUjian.find(u => u.id_ujian === id_ujian);
+  if (!exam) throw new Error("Ujian tidak ditemukan");
+
+  const questions = mockSoal.filter(s => s.id_paket === exam.id_paket);
   let correct = 0;
   let incorrect = 0;
   let unanswered = 0;
@@ -75,8 +105,6 @@ export const submitExam = async (id_user: number, id_ujian: number, answers: Jaw
     tanggal: new Date(),
     jawaban_siswa: answers,
   };
-  // Don't save mock submissions to the list to keep results consistent for analysis
-  // mockHasil.push(result); 
   return result;
 };
 
@@ -85,7 +113,6 @@ export const getUsers = async (): Promise<User[]> => {
     await delay(500);
     return mockUsers.map(({ password, ...user }) => user);
 };
-
 export const addUser = async (userData: Omit<User, 'id_user'>): Promise<User> => {
     await delay(500);
     const newUser: User = { ...userData, id_user: Date.now() + Math.random() };
@@ -93,22 +120,18 @@ export const addUser = async (userData: Omit<User, 'id_user'>): Promise<User> =>
     const { password, ...userWithoutPassword } = newUser;
     return userWithoutPassword;
 };
-
 export const updateUser = async (userId: number, userData: Partial<User>): Promise<User | null> => {
     await delay(500);
     const userIndex = mockUsers.findIndex(u => u.id_user === userId);
     if (userIndex !== -1) {
         const { password, ...rest } = userData;
         mockUsers[userIndex] = { ...mockUsers[userIndex], ...rest };
-        if (password) {
-            mockUsers[userIndex].password = password;
-        }
+        if (password) mockUsers[userIndex].password = password;
         const { password: pw, ...userWithoutPassword } = mockUsers[userIndex];
         return userWithoutPassword;
     }
     return null;
 };
-
 export const deleteUser = async (userId: number): Promise<{ success: boolean }> => {
     await delay(500);
     if (userId === 1) return { success: false };
@@ -117,31 +140,96 @@ export const deleteUser = async (userId: number): Promise<{ success: boolean }> 
     return { success: mockUsers.length < initialLength };
 };
 
-
-// --- Exam Management ---
-export const getExams = async (): Promise<Ujian[]> => {
-    await delay(500);
-    return mockUjian;
-};
-
-const generateToken = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
+// --- Mata Pelajaran Management ---
+export const getMataPelajaran = async (): Promise<MataPelajaran[]> => {
+    await delay(300);
+    return mockMataPelajaran;
+}
+export const addMataPelajaran = async (data: Omit<MataPelajaran, 'id_mapel'>): Promise<MataPelajaran> => {
+    await delay(300);
+    const newMapel = { ...data, id_mapel: Date.now() + Math.random() };
+    mockMataPelajaran.push(newMapel);
+    return newMapel;
+}
+export const updateMataPelajaran = async (id_mapel: number, data: Partial<MataPelajaran>): Promise<MataPelajaran | null> => {
+    await delay(300);
+    const index = mockMataPelajaran.findIndex(m => m.id_mapel === id_mapel);
+    if (index !== -1) {
+        mockMataPelajaran[index] = { ...mockMataPelajaran[index], ...data };
+        return mockMataPelajaran[index];
+    }
+    return null;
+}
+export const deleteMataPelajaran = async (id_mapel: number): Promise<{ success: boolean }> => {
+    await delay(300);
+    mockMataPelajaran = mockMataPelajaran.filter(m => m.id_mapel !== id_mapel);
+    // In a real DB, you'd handle cascading deletes or prevent deletion if in use.
+    return { success: true };
 }
 
-export const addExam = async (examData: Omit<Ujian, 'id_ujian' | 'token' | 'jumlah_soal'>): Promise<Ujian> => {
+// --- Paket Soal Management ---
+export const getPaketSoal = async (): Promise<(PaketSoal & { mata_pelajaran: string, jumlah_soal: number })[]> => {
+    await delay(500);
+    return mockPaketSoal.map(paket => {
+        const mapel = mockMataPelajaran.find(m => m.id_mapel === paket.id_mapel);
+        const jumlah_soal = mockSoal.filter(s => s.id_paket === paket.id_paket).length;
+        return {
+            ...paket,
+            mata_pelajaran: mapel?.nama_mapel || "N/A",
+            jumlah_soal,
+        }
+    });
+}
+export const addPaketSoal = async (data: Omit<PaketSoal, 'id_paket'>): Promise<PaketSoal> => {
+    await delay(300);
+    const newPaket = { ...data, id_paket: Date.now() + Math.random() };
+    mockPaketSoal.push(newPaket);
+    return newPaket;
+}
+export const updatePaketSoal = async (id_paket: number, data: Partial<PaketSoal>): Promise<PaketSoal | null> => {
+    await delay(300);
+    const index = mockPaketSoal.findIndex(p => p.id_paket === id_paket);
+    if (index !== -1) {
+        mockPaketSoal[index] = { ...mockPaketSoal[index], ...data };
+        return mockPaketSoal[index];
+    }
+    return null;
+}
+export const deletePaketSoal = async (id_paket: number): Promise<{ success: boolean }> => {
+    await delay(300);
+    mockPaketSoal = mockPaketSoal.filter(p => p.id_paket !== id_paket);
+    mockSoal = mockSoal.filter(s => s.id_paket !== id_paket);
+    mockUjian = mockUjian.filter(u => u.id_paket !== id_paket);
+    return { success: true };
+}
+
+// --- Exam Management ---
+export const getExams = async (): Promise<(Ujian & {nama_paket: string, mata_pelajaran: string, jumlah_soal: number})[]> => {
+    await delay(500);
+    return mockUjian.map(ujian => {
+        const paket = mockPaketSoal.find(p => p.id_paket === ujian.id_paket);
+        const mapel = mockMataPelajaran.find(m => m.id_mapel === paket?.id_mapel);
+        const jumlah_soal = mockSoal.filter(s => s.id_paket === ujian.id_paket).length;
+        return {
+            ...ujian,
+            nama_paket: paket?.nama_paket || "N/A",
+            mata_pelajaran: mapel?.nama_mapel || "N/A",
+            jumlah_soal,
+        };
+    });
+};
+const generateToken = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+export const addExam = async (examData: Omit<Ujian, 'id_ujian' | 'token' | 'is_active'>): Promise<Ujian> => {
     await delay(500);
     const newExam: Ujian = { 
         ...examData, 
         id_ujian: Date.now() + Math.random(),
         token: generateToken(),
-        jumlah_soal: 0,
-        acak_soal: !!examData.acak_soal,
-        acak_opsi: !!examData.acak_opsi,
+        is_active: false, // Exams are inactive by default
     };
     mockUjian.push(newExam);
     return newExam;
 };
-
 export const updateExam = async (examId: number, examData: Partial<Omit<Ujian, 'id_ujian'>>): Promise<Ujian | null> => {
     await delay(500);
     const examIndex = mockUjian.findIndex(u => u.id_ujian === examId);
@@ -151,138 +239,70 @@ export const updateExam = async (examId: number, examData: Partial<Omit<Ujian, '
     }
     return null;
 };
-
 export const deleteExam = async (examId: number): Promise<{ success: boolean }> => {
     await delay(500);
-    const initialLength = mockUjian.length;
     mockUjian = mockUjian.filter(u => u.id_ujian !== examId);
-    // Also delete associated questions
-    mockSoal = mockSoal.filter(s => s.id_ujian !== examId);
-    return { success: mockUjian.length < initialLength };
+    return { success: true };
 };
 
 // --- Question Management ---
-const updateExamQuestionCount = (examId: number) => {
-    const examIndex = mockUjian.findIndex(u => u.id_ujian === examId);
-    if (examIndex !== -1) {
-        const count = mockSoal.filter(s => s.id_ujian === examId).length;
-        mockUjian[examIndex].jumlah_soal = count;
-    }
+const updatePaketQuestionCount = (paketId: number) => {
+    // This is a helper, not exported. In a real app, a DB trigger or backend logic would handle this.
 };
-
-export const getAllQuestions = async (): Promise<Soal[]> => {
+export const getQuestionsForPaket = async (id_paket: number): Promise<Soal[]> => {
     await delay(500);
-    return mockSoal;
+    return mockSoal.filter(s => s.id_paket === id_paket);
 };
-
 export const addQuestion = async (questionData: Omit<Soal, 'id_soal'>): Promise<Soal> => {
-    await delay(200); // Shorter delay for batch imports
-    const newQuestion: Soal = {
-        ...questionData,
-        id_soal: Date.now() + Math.random(),
-    };
-    
-    if (newQuestion.jumlah_opsi === 4) {
-        delete newQuestion.opsi_e;
-    }
-
+    await delay(200);
+    const newQuestion: Soal = { ...questionData, id_soal: Date.now() + Math.random() };
+    if (newQuestion.jumlah_opsi === 4) delete newQuestion.opsi_e;
     mockSoal.push(newQuestion);
-    if (newQuestion.id_ujian) {
-        updateExamQuestionCount(newQuestion.id_ujian);
-    }
+    updatePaketQuestionCount(newQuestion.id_paket);
     return newQuestion;
 };
-
 export const updateQuestion = async (questionId: number, questionData: Partial<Omit<Soal, 'id_soal'>>): Promise<Soal | null> => {
     await delay(500);
     const questionIndex = mockSoal.findIndex(s => s.id_soal === questionId);
     if (questionIndex !== -1) {
-        const originalExamId = mockSoal[questionIndex].id_ujian;
-
         mockSoal[questionIndex] = { ...mockSoal[questionIndex], ...questionData };
-        
-        const updatedQuestion = mockSoal[questionIndex];
-        const newExamId = updatedQuestion.id_ujian;
-
-        if (updatedQuestion.jumlah_opsi === 4) {
-            delete updatedQuestion.opsi_e;
-        }
-
-        if (originalExamId) {
-            updateExamQuestionCount(originalExamId);
-        }
-
-        if (newExamId && originalExamId !== newExamId) {
-            updateExamQuestionCount(newExamId);
-        }
-
-        return updatedQuestion;
+        if (mockSoal[questionIndex].jumlah_opsi === 4) delete mockSoal[questionIndex].opsi_e;
+        return mockSoal[questionIndex];
     }
     return null;
 };
-
 export const deleteQuestion = async (questionId: number): Promise<{ success: boolean }> => {
     await delay(500);
-    const question = mockSoal.find(s => s.id_soal === questionId);
-    if (!question) return { success: false };
-
-    const examId = question.id_ujian;
-    const initialLength = mockSoal.length;
     mockSoal = mockSoal.filter(s => s.id_soal !== questionId);
-    
-    if (mockSoal.length < initialLength) {
-        if(examId) {
-            updateExamQuestionCount(examId);
-        }
-        return { success: true };
-    }
-    return { success: false };
+    return { success: true };
 };
-
 
 // --- Results & Analysis ---
 export const getResultsForExam = async (examId: number): Promise<ExamResultWithUser[]> => {
     await delay(700);
     const resultsForExam = mockHasil.filter(h => h.id_ujian === examId);
-    
     const resultsWithUser: ExamResultWithUser[] = resultsForExam.map(result => {
         const user = mockUsers.find(u => u.id_user === result.id_user);
         return {
             ...result,
-            // FIX: Use Role.SISWA enum instead of string 'siswa' to match the User type.
             user: user ? { ...user, password: '' } : { id_user: 0, username: 'Unknown', nama_lengkap: 'Unknown User', role: Role.SISWA }
         };
-    }).sort((a, b) => b.nilai - a.nilai); // Sort by score descending
-
+    }).sort((a, b) => b.nilai - a.nilai);
     return resultsWithUser;
 }
 
 // --- Activity Monitoring ---
 export const logActivity = async (id_user: number, id_ujian: number, activity_type: ActivityType): Promise<{ success: boolean }> => {
-    // No delay, should be fast
-    const newLog: ActivityLog = {
-        id_log: Date.now() + Math.random(),
-        id_user,
-        id_ujian,
-        activity_type,
-        timestamp: new Date(),
-    };
+    const newLog: ActivityLog = { id_log: Date.now() + Math.random(), id_user, id_ujian, activity_type, timestamp: new Date() };
     mockActivityLogs.push(newLog);
-    console.log("Activity Logged: ", newLog);
     return { success: true };
 };
-
 export const getActivityLogsForExam = async (examId: number): Promise<ActivityLog[]> => {
     await delay(600);
     const logs = mockActivityLogs.filter(log => log.id_ujian === examId);
-
     const logsWithUser = logs.map(log => {
         const user = mockUsers.find(u => u.id_user === log.id_user);
-        return {
-            ...log,
-            user: user ? { ...user, password: '' } : undefined
-        };
-    }).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()); // Sort by most recent first
-
+        return { ...log, user: user ? { ...user, password: '' } : undefined };
+    }).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     return logsWithUser;
 };

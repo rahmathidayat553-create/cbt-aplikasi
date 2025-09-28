@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Ujian, Soal, AnswerOption } from '../types';
+// FIX: Import Ujian as BaseUjian to avoid name conflicts.
+import { Ujian as BaseUjian, Soal, AnswerOption } from '../types';
 import { getQuestionsForExam, addQuestion, updateQuestion, deleteQuestion } from '../services/api';
 import { IconArrowLeft, IconEdit, IconLoader, IconPlus, IconTrash, IconFileText, IconClock, IconBookOpen, IconImage, IconVolume2, IconVideo, IconYoutube, IconX } from './icons/Icons';
 
+// FIX: Define a more detailed Ujian type.
+type Ujian = BaseUjian & { nama_paket: string; mata_pelajaran: string };
+
 interface ExamDetailsProps {
+  // FIX: Use the more detailed Ujian type.
   exam: Ujian;
   onBack: () => void;
 }
@@ -11,7 +16,8 @@ interface ExamDetailsProps {
 const QuestionFormModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (question: Omit<Soal, 'id_soal' | 'id_ujian'> | (Partial<Soal> & { id_soal: number })) => void;
+  // FIX: Corrected the Omit type to use `id_paket` instead of the non-existent `id_ujian` on the Soal type.
+  onSubmit: (question: Omit<Soal, 'id_soal' | 'id_paket'> | (Partial<Soal> & { id_soal: number })) => void;
   initialData?: Soal | null;
 }> = ({ isOpen, onClose, onSubmit, initialData }) => {
   const [formData, setFormData] = useState<Partial<Soal>>({
@@ -271,7 +277,8 @@ const ExamDetails: React.FC<ExamDetailsProps> = ({ exam, onBack }) => {
     if (questionData.id_soal) {
       await updateQuestion(questionData.id_soal, questionData);
     } else {
-      await addQuestion({ ...questionData, id_ujian: exam.id_ujian });
+      // FIX: Corrected logic to use `id_paket` from the exam, as Soal is related to PaketSoal, not Ujian directly.
+      await addQuestion({ ...questionData, id_paket: exam.id_paket });
     }
     fetchQuestions();
     // In a real app, the parent would refetch the exam list to get updated counts
@@ -313,7 +320,9 @@ const ExamDetails: React.FC<ExamDetailsProps> = ({ exam, onBack }) => {
       </div>
       
       <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg mb-8">
-        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">{exam.nama_ujian}</h2>
+        {/* FIX: Changed `exam.nama_ujian` to `exam.nama_paket` to match available property. */}
+        <h2 className="text-3xl font-bold text-slate-900 dark:text-white">{exam.nama_paket}</h2>
+        {/* FIX: Used `exam.mata_pelajaran` which is now available due to updated prop type. */}
         <p className="text-slate-500 dark:text-slate-400">{exam.mata_pelajaran}</p>
         <div className="flex items-center space-x-6 mt-4 text-sm text-slate-600 dark:text-slate-300">
             <div className="flex items-center space-x-2"><IconBookOpen className="h-5 w-5" /> <span>{questions.length} Soal</span></div>

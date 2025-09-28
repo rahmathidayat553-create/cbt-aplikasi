@@ -1,4 +1,4 @@
-import { User, Role, Ujian, Soal, AnswerOption, Hasil } from './types';
+import { User, Role, Ujian, Soal, AnswerOption, Hasil, MataPelajaran, PaketSoal } from './types';
 
 export const USERS: User[] = [
   { id_user: 1, username: 'admin', password: 'password', nama_lengkap: 'Admin Utama', role: Role.ADMIN },
@@ -7,28 +7,37 @@ export const USERS: User[] = [
   { id_user: 4, username: 'siswa2', password: 'password', nama_lengkap: 'Agus Setiawan', role: Role.SISWA, kelas: 'XII IPA 1' },
 ];
 
+export const MATA_PELAJARAN_LIST: MataPelajaran[] = [
+  { id_mapel: 1, nama_mapel: 'Matematika Wajib' },
+  { id_mapel: 2, nama_mapel: 'Biologi' },
+  { id_mapel: 3, nama_mapel: 'Sejarah Indonesia' },
+];
+
+export const PAKET_SOAL_LIST: (PaketSoal & { mata_pelajaran: string, jumlah_soal: number })[] = [
+    { id_paket: 10, id_mapel: 1, nama_paket: 'UAS Ganjil Matematika 2024', mata_pelajaran: 'Matematika Wajib', jumlah_soal: 5 },
+    { id_paket: 11, id_mapel: 2, nama_paket: 'Ulangan Harian - Biologi Sel', mata_pelajaran: 'Biologi', jumlah_soal: 4 },
+];
+
 export const UJIAN_LIST: Ujian[] = [
   {
     id_ujian: 1,
-    nama_ujian: 'Ujian Akhir Semester - Matematika',
-    mata_pelajaran: 'Matematika Wajib',
+    id_paket: 10,
     waktu_mulai: new Date('2024-09-01T08:00:00'),
     durasi: 90,
     token: 'MATEM24',
-    jumlah_soal: 5,
     acak_soal: true,
     acak_opsi: true,
+    is_active: true,
   },
   {
     id_ujian: 2,
-    nama_ujian: 'Ulangan Harian - Biologi Sel',
-    mata_pelajaran: 'Biologi',
+    id_paket: 11,
     waktu_mulai: new Date('2024-09-02T10:00:00'),
     durasi: 45,
     token: 'BIOSEL24',
-    jumlah_soal: 4,
     acak_soal: false,
     acak_opsi: true,
+    is_active: false,
   },
 ];
 
@@ -36,7 +45,7 @@ export const SOAL_LIST: Soal[] = [
   // Matematika
   {
     id_soal: 101,
-    id_ujian: 1,
+    id_paket: 10,
     pertanyaan: 'Hasil dari <b>2x + 5 = 15</b> adalah...',
     opsi_a: 'x = 3',
     opsi_b: 'x = 4',
@@ -48,7 +57,7 @@ export const SOAL_LIST: Soal[] = [
   },
   {
     id_soal: 102,
-    id_ujian: 1,
+    id_paket: 10,
     pertanyaan: 'Sebuah persegi memiliki sisi 8 cm. Berapakah luasnya?',
     opsi_a: '16 cm²',
     opsi_b: '32 cm²',
@@ -59,7 +68,7 @@ export const SOAL_LIST: Soal[] = [
   },
   {
     id_soal: 103,
-    id_ujian: 1,
+    id_paket: 10,
     pertanyaan: 'Berapakah nilai dari π (pi) hingga dua desimal?',
     opsi_a: '3.12',
     opsi_b: '3.14',
@@ -71,7 +80,7 @@ export const SOAL_LIST: Soal[] = [
   },
   {
     id_soal: 104,
-    id_ujian: 1,
+    id_paket: 10,
     pertanyaan: 'Jika sebuah dadu dilempar, berapakah peluang munculnya angka genap?',
     opsi_a: '1/6',
     opsi_b: '1/3',
@@ -82,7 +91,7 @@ export const SOAL_LIST: Soal[] = [
   },
   {
     id_soal: 105,
-    id_ujian: 1,
+    id_paket: 10,
     pertanyaan: 'Berapa jumlah sudut dalam sebuah segitiga?',
     opsi_a: '90°',
     opsi_b: '180°',
@@ -94,7 +103,7 @@ export const SOAL_LIST: Soal[] = [
   // Biologi
   {
     id_soal: 201,
-    id_ujian: 2,
+    id_paket: 11,
     pertanyaan: 'Bagian sel yang berfungsi sebagai pusat pengatur seluruh kegiatan sel adalah...',
     opsi_a: 'Mitokondria',
     opsi_b: 'Ribosom',
@@ -106,7 +115,7 @@ export const SOAL_LIST: Soal[] = [
   },
   {
     id_soal: 202,
-    id_ujian: 2,
+    id_paket: 11,
     pertanyaan: 'Organel sel yang berfungsi untuk respirasi sel adalah...',
     opsi_a: 'Mitokondria',
     opsi_b: 'Lisosom',
@@ -117,7 +126,7 @@ export const SOAL_LIST: Soal[] = [
   },
   {
     id_soal: 203,
-    id_ujian: 2,
+    id_paket: 11,
     pertanyaan: 'Manakah dari berikut ini yang HANYA ditemukan pada sel tumbuhan?',
     opsi_a: 'Membran Sel',
     opsi_b: 'Dinding Sel',
@@ -128,7 +137,7 @@ export const SOAL_LIST: Soal[] = [
   },
   {
     id_soal: 204,
-    id_ujian: 2,
+    id_paket: 11,
     pertanyaan: 'Perhatikan video berikut tentang pembelahan sel. Proses apa yang dijelaskan?',
     opsi_a: 'Mitosis',
     opsi_b: 'Meiosis',

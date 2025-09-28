@@ -17,11 +17,14 @@ interface ExamResultsAnalysisProps {
 type AnalysisView = 'list' | 'details';
 type DetailTab = 'results' | 'analysis';
 
+// FIX: Define a more detailed type for Ujian that includes properties returned by the API.
+type FormattedUjian = Ujian & { nama_paket: string; mata_pelajaran: string; jumlah_soal: number; };
+
 interface ItemAnalysisData {
   id_soal: number;
   pertanyaan: string;
   jawaban_benar: string;
-  distractors: { A: number; B: number; C: number; D: number; unanswered: number };
+  distractors: { A: number; B: number; C: number; D: number; E?: number; unanswered: number };
   correctCount: number;
   totalAttempts: number;
   difficulty: { value: number; label: string };
@@ -30,8 +33,10 @@ interface ItemAnalysisData {
 
 const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => {
   const [view, setView] = useState<AnalysisView>('list');
-  const [exams, setExams] = useState<Ujian[]>([]);
-  const [selectedExam, setSelectedExam] = useState<Ujian | null>(null);
+  // FIX: Use the more specific FormattedUjian type for the exams state.
+  const [exams, setExams] = useState<FormattedUjian[]>([]);
+  // FIX: Use the more specific FormattedUjian type for the selectedExam state.
+  const [selectedExam, setSelectedExam] = useState<FormattedUjian | null>(null);
   const [results, setResults] = useState<ExamResultWithUser[]>([]);
   const [questions, setQuestions] = useState<Soal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,13 +47,15 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
     const fetchExams = async () => {
       setLoading(true);
       const examList = await getExams();
-      setExams(examList);
+      // FIX: Cast to FormattedUjian as getExams returns the extended type.
+      setExams(examList as FormattedUjian[]);
       setLoading(false);
     };
     fetchExams();
   }, []);
 
-  const handleSelectExam = useCallback(async (exam: Ujian) => {
+  // FIX: Update the type of the `exam` parameter.
+  const handleSelectExam = useCallback(async (exam: FormattedUjian) => {
     setLoading(true);
     setSelectedExam(exam);
     const [examResults, examQuestions] = await Promise.all([
@@ -90,14 +97,16 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
 
   const itemAnalysisData = useMemo<ItemAnalysisData[]>(() => {
     if (questions.length === 0 || results.length === 0) return [];
-
+  
     const totalStudents = results.length;
+    // Ensure results are sorted by score for upper/lower group analysis
     const sortedResults = [...results].sort((a, b) => b.nilai - a.nilai);
     const upperGroupSize = Math.ceil(totalStudents / 2);
+    // Correctly calculate lower group size
     const lowerGroupSize = totalStudents - upperGroupSize;
     const upperGroup = sortedResults.slice(0, upperGroupSize);
     const lowerGroup = sortedResults.slice(upperGroupSize);
-
+  
     return questions.map(q => {
       const analysis: ItemAnalysisData = {
         id_soal: q.id_soal,
@@ -109,30 +118,38 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
         difficulty: { value: 0, label: 'N/A' },
         discrimination: { value: 0, label: 'N/A' },
       };
-
+      if (q.jumlah_opsi === 5) {
+        analysis.distractors.E = 0;
+      }
+  
       let correctUpper = 0;
       let correctLower = 0;
-
+  
       results.forEach(res => {
         const studentAnswer = res.jawaban_siswa.find(ans => ans.id_soal === q.id_soal);
         if (!studentAnswer || studentAnswer.jawaban === null) {
           analysis.distractors.unanswered++;
         } else {
-          analysis.distractors[studentAnswer.jawaban]++;
+          if (analysis.distractors[studentAnswer.jawaban] !== undefined) {
+             analysis.distractors[studentAnswer.jawaban]++;
+          }
           if (studentAnswer.jawaban === q.jawaban_benar) {
             analysis.correctCount++;
+            // Check if user is in upper or lower group
             if (upperGroup.some(u => u.id_user === res.id_user)) correctUpper++;
             if (lowerGroup.some(l => l.id_user === res.id_user)) correctLower++;
           }
         }
       });
       
+      // Difficulty Index (P)
       const diffValue = totalStudents > 0 ? analysis.correctCount / totalStudents : 0;
       analysis.difficulty = {
         value: diffValue,
         label: diffValue >= 0.7 ? 'Mudah' : diffValue >= 0.3 ? 'Sedang' : 'Sukar',
       };
       
+      // Discrimination Index (D)
       const discValue = upperGroupSize > 0 && lowerGroupSize > 0 
         ? (correctUpper / upperGroupSize) - (correctLower / lowerGroupSize)
         : 0;
@@ -140,7 +157,7 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
           value: discValue,
           label: discValue >= 0.4 ? 'Sangat Baik' : discValue >= 0.3 ? 'Baik' : discValue >= 0.2 ? 'Cukup' : 'Jelek'
       };
-
+  
       return analysis;
     });
   }, [questions, results]);
@@ -158,7 +175,8 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
     const ws = window.XLSX.utils.json_to_sheet(data);
     const wb = window.XLSX.utils.book_new();
     window.XLSX.utils.book_append_sheet(wb, ws, "Hasil Ujian");
-    window.XLSX.writeFile(wb, `Hasil_${selectedExam?.nama_ujian.replace(/ /g, "_")}.xlsx`);
+    // FIX: Changed `nama_ujian` to `nama_paket` which is available.
+    window.XLSX.writeFile(wb, `Hasil_${selectedExam?.nama_paket.replace(/ /g, "_")}.xlsx`);
   };
 
   const exportAnalysisToExcel = () => {
@@ -170,6 +188,7 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
       "Jwb B": item.distractors.B,
       "Jwb C": item.distractors.C,
       "Jwb D": item.distractors.D,
+      ...(item.distractors.E !== undefined && { "Jwb E": item.distractors.E }),
       "Kosong": item.distractors.unanswered,
       "Tingkat Kesukaran": `${item.difficulty.label} (${item.difficulty.value.toFixed(2)})`,
       "Daya Pembeda": `${item.discrimination.label} (${item.discrimination.value.toFixed(2)})`,
@@ -177,7 +196,8 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
     const ws = window.XLSX.utils.json_to_sheet(data);
     const wb = window.XLSX.utils.book_new();
     window.XLSX.utils.book_append_sheet(wb, ws, "Analisis Butir Soal");
-    window.XLSX.writeFile(wb, `Analisis_${selectedExam?.nama_ujian.replace(/ /g, "_")}.xlsx`);
+    // FIX: Changed `nama_ujian` to `nama_paket` which is available.
+    window.XLSX.writeFile(wb, `Analisis_${selectedExam?.nama_paket.replace(/ /g, "_")}.xlsx`);
   }
 
   const renderContent = () => {
@@ -190,7 +210,9 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
         <div className="space-y-4">
           {exams.length > 0 ? exams.map(exam => (
             <button key={exam.id_ujian} onClick={() => handleSelectExam(exam)} className="w-full text-left p-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{exam.nama_ujian}</h3>
+              {/* FIX: Changed `nama_ujian` to `nama_paket` which is available. */}
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{exam.nama_paket}</h3>
+              {/* FIX: `mata_pelajaran` is now available on the typed `exam` object. */}
               <p className="text-sm text-slate-500 dark:text-slate-400">{exam.mata_pelajaran}</p>
             </button>
           )) : <p className="text-center text-slate-500 dark:text-slate-400">Tidak ada ujian yang ditemukan.</p>}
@@ -213,7 +235,8 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
           </button>
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h3 className="text-2xl font-bold">{selectedExam.nama_ujian}</h3>
+              {/* FIX: Changed `nama_ujian` to `nama_paket` which is available. */}
+              <h3 className="text-2xl font-bold">{selectedExam.nama_paket}</h3>
               <p className="text-slate-500 dark:text-slate-400">Total Peserta: {results.length}</p>
             </div>
             {detailTab === 'results' && results.length > 0 && <button onClick={exportResultsToExcel} className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg text-sm"><IconFileSpreadsheet className="h-4 w-4" /><span>Export Hasil</span></button>}
@@ -304,7 +327,7 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
                     <p className="font-semibold text-slate-500 dark:text-slate-400 text-sm">Soal #{index + 1}</p>
                     <p className="mt-1 text-slate-800 dark:text-slate-200" dangerouslySetInnerHTML={{ __html: item.pertanyaan }} />
                     <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div className="col-span-2 md:col-span-4 grid grid-cols-2 md:grid-cols-5 gap-2">
+                        <div className="col-span-2 md:col-span-4 grid grid-cols-2 md:grid-cols-6 gap-2">
                            {Object.entries(item.distractors).map(([option, count]) => (
                                <div key={option} className={`p-2 rounded-md text-center ${option === item.jawaban_benar ? 'bg-green-100 dark:bg-green-900/50 ring-1 ring-green-500' : 'bg-slate-200 dark:bg-slate-600'}`}>
                                    <p className="font-bold text-slate-800 dark:text-white">{option === 'unanswered' ? 'Kosong' : `Opsi ${option}`}</p>

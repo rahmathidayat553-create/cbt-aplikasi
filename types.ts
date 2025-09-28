@@ -26,9 +26,20 @@ export interface User {
   kelas?: string;
 }
 
+export interface MataPelajaran {
+  id_mapel: number;
+  nama_mapel: string;
+}
+
+export interface PaketSoal {
+  id_paket: number;
+  id_mapel: number;
+  nama_paket: string;
+}
+
 export interface Soal {
   id_soal: number;
-  id_ujian?: number;
+  id_paket: number; // Changed from id_ujian
   pertanyaan: string;
   opsi_a: string;
   opsi_b: string;
@@ -47,15 +58,15 @@ export interface Soal {
 
 export interface Ujian {
   id_ujian: number;
-  nama_ujian: string;
-  mata_pelajaran: string;
+  id_paket: number;
   waktu_mulai: Date;
   durasi: number; // in minutes
   token: string;
-  jumlah_soal: number;
   acak_soal?: boolean;
   acak_opsi?: boolean;
+  is_active: boolean;
 }
+
 
 export interface JawabanSiswa {
   id_soal: number;

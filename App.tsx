@@ -16,10 +16,14 @@ export const ThemeContext = React.createContext<{
   toggleTheme: () => void;
 } | null>(null);
 
+// FIX: Define a more specific type for an exam that includes details from its question package.
+type FormattedUjian = Ujian & { nama_paket: string; mata_pelajaran: string; jumlah_soal: number };
+
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<'login' | 'dashboard' | 'exam' | 'results'>('login');
-  const [activeExam, setActiveExam] = useState<Ujian | null>(null);
+  // FIX: Use the more specific FormattedUjian type for the active exam state.
+  const [activeExam, setActiveExam] = useState<FormattedUjian | null>(null);
   const [examResult, setExamResult] = useState<Hasil | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
@@ -49,7 +53,8 @@ const App: React.FC = () => {
     },
   }), [user]);
 
-  const handleStartExam = (ujian: Ujian) => {
+  // FIX: Update the type of the `ujian` parameter to match the data passed from SiswaDashboard.
+  const handleStartExam = (ujian: FormattedUjian) => {
     setActiveExam(ujian);
     setCurrentView('exam');
   };
@@ -73,6 +78,7 @@ const App: React.FC = () => {
         return <Dashboard onStartExam={handleStartExam} />;
       case 'exam':
         if (activeExam && user) {
+          // This previously had an error because activeExam was of type Ujian, but now it's FormattedUjian.
           return <ExamView ujian={activeExam} user={user} onFinishExam={handleFinishExam} />;
         }
         return <Dashboard onStartExam={handleStartExam} />; // Fallback

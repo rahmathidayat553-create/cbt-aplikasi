@@ -7,13 +7,18 @@ declare global {
 }
 
 import React, { useContext } from 'react';
-import { Hasil, Ujian } from '../types';
+// FIX: Import Ujian as BaseUjian to avoid name conflict with local type definition.
+import { Hasil, Ujian as BaseUjian } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { IconCheckCircle, IconXCircle, IconMinusCircle, IconDownload, IconHome, IconFilePdf } from './icons/Icons';
 import { ThemeContext } from '../App';
 
+// FIX: Define a more specific type for the exam prop that includes details from the question package.
+type Ujian = BaseUjian & { nama_paket: string; mata_pelajaran: string; };
+
 interface ResultsViewProps {
   result: Hasil;
+  // FIX: Use the more specific Ujian type for the exam prop.
   exam: Ujian;
   onBackToDashboard: () => void;
 }
@@ -29,7 +34,9 @@ const ResultsView: React.FC<ResultsViewProps> = ({ result, exam, onBackToDashboa
   
   const handleExportExcel = () => {
     const ws_data = [
-        ["Nama Ujian", exam.nama_ujian],
+        // FIX: Changed `exam.nama_ujian` to `exam.nama_paket` to match the available property.
+        ["Nama Ujian", exam.nama_paket],
+        // FIX: This property is now available due to the updated prop type.
         ["Mata Pelajaran", exam.mata_pelajaran],
         ["Tanggal", result.tanggal.toLocaleDateString()],
         [],
@@ -44,7 +51,8 @@ const ResultsView: React.FC<ResultsViewProps> = ({ result, exam, onBackToDashboa
     const ws = window.XLSX.utils.aoa_to_sheet(ws_data);
     const wb = window.XLSX.utils.book_new();
     window.XLSX.utils.book_append_sheet(wb, ws, "Hasil Ujian");
-    window.XLSX.writeFile(wb, `Hasil_${exam.nama_ujian.replace(/ /g,"_")}.xlsx`);
+    // FIX: Changed `exam.nama_ujian` to `exam.nama_paket` to match the available property.
+    window.XLSX.writeFile(wb, `Hasil_${exam.nama_paket.replace(/ /g,"_")}.xlsx`);
   };
   
   const handleExportPdf = () => {
@@ -101,7 +109,8 @@ const ResultsView: React.FC<ResultsViewProps> = ({ result, exam, onBackToDashboa
       </style>
       <div className="w-full max-w-4xl bg-white dark:bg-slate-800 shadow-2xl rounded-2xl p-6 md:p-10 text-center printable-area">
         <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-2">Hasil Ujian</h1>
-        <p className="text-slate-500 dark:text-slate-400 mb-8">Berikut adalah rincian hasil ujian Anda untuk <strong>{exam.nama_ujian}</strong>.</p>
+        {/* FIX: Changed `exam.nama_ujian` to `exam.nama_paket` to match the available property. */}
+        <p className="text-slate-500 dark:text-slate-400 mb-8">Berikut adalah rincian hasil ujian Anda untuk <strong>{exam.nama_paket}</strong>.</p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div className="flex flex-col items-center justify-center">
