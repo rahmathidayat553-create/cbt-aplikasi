@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { MataPelajaran, PaketSoal, Soal, AnswerOption } from '../types';
 import { getPaketSoal, addPaketSoal, updatePaketSoal, deletePaketSoal, getMataPelajaran, getQuestionsForPaket, addQuestion, updateQuestion, deleteQuestion } from '../services/api';
-import { IconArrowLeft, IconEdit, IconLoader, IconPlus, IconTrash, IconFileText, IconBookOpen } from './icons/Icons';
+import { IconArrowLeft, IconEdit, IconLoader, IconPlus, IconTrash, IconFileText, IconBookOpen, IconFilter } from './icons/Icons';
 
 // Sub-component for Question Form (similar to the one in old ExamDetails)
 const QuestionFormModal: React.FC<{
@@ -181,6 +181,7 @@ const QuestionBank: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [editingPaket, setEditingPaket] = useState<PaketSoal | null>(null);
   const [selectedPaket, setSelectedPaket] = useState<(PaketSoal & { mata_pelajaran: string, jumlah_soal: number }) | null>(null);
   const [formData, setFormData] = useState({ nama_paket: '', id_mapel: '' });
+  const [subjectFilter, setSubjectFilter] = useState<string>('all');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -194,6 +195,14 @@ const QuestionBank: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     fetchData();
   }, [fetchData]);
   
+  const filteredPaketSoal = useMemo(() => {
+    if (subjectFilter === 'all') {
+      return paketSoal;
+    }
+    const filterId = parseInt(subjectFilter, 10);
+    return paketSoal.filter(p => p.id_mapel === filterId);
+  }, [paketSoal, subjectFilter]);
+
   const handleOpenModal = (paket: PaketSoal | null = null) => {
     setEditingPaket(paket);
     setFormData({
@@ -264,9 +273,29 @@ const QuestionBank: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </button>
         </div>
 
-        {loading ? <div className="text-center py-4"><IconLoader className="h-6 w-6 animate-spin mx-auto" /></div> : paketSoal.length === 0 ? <p className="text-center text-slate-500 py-4">Belum ada paket soal. Buat paket baru untuk memulai.</p> : 
+        <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+            <label htmlFor="subject-filter" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
+                <IconFilter className="h-4 w-4 mr-2" />
+                Filter Berdasarkan Mata Pelajaran
+            </label>
+            <select
+                id="subject-filter"
+                value={subjectFilter}
+                onChange={e => setSubjectFilter(e.target.value)}
+                className="shadow-sm bg-slate-100 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-primary-500 focus:border-primary-500 block w-full max-w-sm p-2.5 dark:bg-slate-700 dark:border-slate-600 dark:placeholder-slate-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+            >
+                <option value="all">Semua Mata Pelajaran</option>
+                {mataPelajaran.map(m => (
+                <option key={m.id_mapel} value={m.id_mapel}>
+                    {m.nama_mapel}
+                </option>
+                ))}
+            </select>
+        </div>
+
+        {loading ? <div className="text-center py-4"><IconLoader className="h-6 w-6 animate-spin mx-auto" /></div> : filteredPaketSoal.length === 0 ? <p className="text-center text-slate-500 py-4">{subjectFilter === 'all' ? 'Belum ada paket soal. Buat paket baru untuk memulai.' : 'Tidak ada paket soal untuk mata pelajaran ini.'}</p> : 
             <div className="space-y-4">
-                {paketSoal.map(paket => (
+                {filteredPaketSoal.map(paket => (
                     <div key={paket.id_paket} className="p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 flex justify-between items-center">
                         <div className="flex-grow cursor-pointer" onClick={() => setSelectedPaket(paket)}>
                             <p className="font-bold text-lg text-slate-900 dark:text-white">{paket.nama_paket}</p>
