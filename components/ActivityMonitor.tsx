@@ -7,14 +7,11 @@ interface ActivityMonitorProps {
   onBack: () => void;
 }
 
-// FIX: Define a more specific type for an exam to include properties returned from the API.
 type FormattedUjian = Ujian & { nama_paket: string; mata_pelajaran: string; };
 
 const ActivityMonitor: React.FC<ActivityMonitorProps> = ({ onBack }) => {
   const [view, setView] = useState<'list' | 'details'>('list');
-  // FIX: Use the more specific FormattedUjian type for the exams state.
   const [exams, setExams] = useState<FormattedUjian[]>([]);
-  // FIX: Use the more specific FormattedUjian type for the selectedExam state.
   const [selectedExam, setSelectedExam] = useState<FormattedUjian | null>(null);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,14 +20,12 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({ onBack }) => {
     const fetchExams = async () => {
       setLoading(true);
       const examList = await getExams();
-      // FIX: Cast the result from getExams to the more specific type.
       setExams(examList as FormattedUjian[]);
       setLoading(false);
     };
     fetchExams();
   }, []);
 
-  // FIX: Update the type of the `exam` parameter.
   const handleSelectExam = useCallback(async (exam: FormattedUjian) => {
     setLoading(true);
     setSelectedExam(exam);
@@ -47,7 +42,6 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({ onBack }) => {
   };
 
   const getActivityLabel = (type: ActivityType) => {
-    // FIX: Replaced incorrect `ActivityType.TAB_SWITCH` with `ActivityType.VISIBILITY_HIDDEN` and added handlers for all possible activity types.
     switch (type) {
       case ActivityType.VISIBILITY_HIDDEN:
         return { text: 'Beralih Tab/Jendela', color: 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400' };
@@ -73,9 +67,7 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({ onBack }) => {
           <h3 className="text-xl font-bold">Pilih Ujian untuk Dipantau</h3>
           {exams.length > 0 ? exams.map(exam => (
             <button key={exam.id_ujian} onClick={() => handleSelectExam(exam)} className="w-full text-left p-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-              {/* FIX: Changed `exam.nama_ujian` to `exam.nama_paket` which is available. */}
               <h4 className="font-bold text-lg text-slate-900 dark:text-white">{exam.nama_paket}</h4>
-              {/* FIX: `mata_pelajaran` is now available on the typed `exam` object. */}
               <p className="text-sm text-slate-500 dark:text-slate-400">{exam.mata_pelajaran}</p>
             </button>
           )) : <p className="text-center text-slate-500 dark:text-slate-400">Tidak ada ujian yang ditemukan.</p>}
@@ -90,7 +82,6 @@ const ActivityMonitor: React.FC<ActivityMonitorProps> = ({ onBack }) => {
             <IconArrowLeft className="h-4 w-4" />
             <span>Kembali ke Daftar Ujian</span>
           </button>
-          {/* FIX: Changed `selectedExam.nama_ujian` to `selectedExam.nama_paket` which is available. */}
           <h3 className="text-2xl font-bold mb-4">Log Aktivitas: {selectedExam.nama_paket}</h3>
           
           {logs.length === 0 ? (
