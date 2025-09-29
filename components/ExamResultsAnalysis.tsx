@@ -5,8 +5,8 @@ declare global {
 }
 import React, { useState, useEffect, useCallback, useMemo, useContext } from 'react';
 import { Ujian, ExamResultWithUser, Soal } from '../types';
-import { getExams, getResultsForExam, getQuestionsForExam } from '../services/api';
-import { IconArrowLeft, IconLoader, IconFileSpreadsheet, IconTrophy } from './icons/Icons';
+import { getExams, getResultsForExam, getQuestionsForExam, resetExamForUser } from '../services/api';
+import { IconArrowLeft, IconLoader, IconFileSpreadsheet, IconTrophy, IconRotateCcw } from './icons/Icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { ThemeContext } from '../App';
 
@@ -41,6 +41,7 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
   const [questions, setQuestions] = useState<Soal[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailTab, setDetailTab] = useState<DetailTab>('results');
+  const [resettingUser, setResettingUser] = useState<ExamResultWithUser | null>(null);
   const themeContext = useContext(ThemeContext);
 
   useEffect(() => {
@@ -73,6 +74,20 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
     setSelectedExam(null);
     setResults([]);
     setQuestions([]);
+  };
+
+  const handleConfirmReset = async () => {
+    if (!resettingUser || !selectedExam) return;
+    
+    await resetExamForUser(resettingUser.id_user, selectedExam.id_ujian);
+    
+    // Refresh data
+    setLoading(true);
+    const updatedResults = await getResultsForExam(selectedExam.id_ujian);
+    setResults(updatedResults);
+    setLoading(false);
+
+    setResettingUser(null);
   };
   
   const scoreDistributionData = useMemo(() => {
@@ -302,6 +317,7 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
                     <th className="px-4 py-3">Benar</th>
                     <th className="px-4 py-3">Salah</th>
                     <th className="px-4 py-3">Kosong</th>
+                    <th className="px-4 py-3 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="text-slate-700 dark:text-slate-300">
@@ -313,6 +329,16 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
                       <td className="px-4 py-3 text-green-600 dark:text-green-400">{res.benar}</td>
                       <td className="px-4 py-3 text-red-600 dark:text-red-400">{res.salah}</td>
                       <td className="px-4 py-3 text-slate-500">{res.tidak_dijawab}</td>
+                       <td className="px-4 py-3 text-right">
+                        <button 
+                            onClick={() => setResettingUser(res)} 
+                            className="p-2 text-blue-500 hover:text-blue-600 dark:hover:text-blue-400"
+                            aria-label="Reset Ujian"
+                            title="Reset Ujian"
+                        >
+                            <IconRotateCcw className="h-4 w-4"/>
+                        </button>
+                    </td>
                     </tr>
                   ))}
                 </tbody>
@@ -356,6 +382,21 @@ const ExamResultsAnalysis: React.FC<ExamResultsAnalysisProps> = ({ onBack }) => 
 
   return (
     <div>
+        {resettingUser && (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-8 shadow-xl max-w-sm w-full text-center">
+                    <h2 className="text-2xl font-bold mb-4">Reset Ujian?</h2>
+                    <p className="text-slate-600 dark:text-slate-300 mb-6">
+                        Yakin ingin mereset ujian untuk <strong>{resettingUser.user.nama_lengkap}</strong>? 
+                        Hasil ujian mereka akan dihapus dan mereka dapat mengerjakan ulang.
+                    </p>
+                    <div className="flex justify-center space-x-4">
+                        <button onClick={() => setResettingUser(null)} className="px-6 py-2 rounded-lg bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-700 transition">Batal</button>
+                        <button onClick={handleConfirmReset} className="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition">Ya, Reset</button>
+                    </div>
+                </div>
+            </div>
+        )}
       <div className="flex items-center justify-between mb-6">
         <button onClick={view === 'details' ? handleBackToList : onBack} className="flex items-center space-x-2 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
             <IconArrowLeft className="h-5 w-5" />

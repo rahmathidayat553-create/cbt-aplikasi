@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IconUpload, IconFileText, IconClipboardList, IconDownload, IconActivity, IconClipboardCheck, IconPanelRightClose, IconPanelRightOpen, IconIdCard, IconUsers, IconBook } from './icons/Icons';
+import { IconUpload, IconFileText, IconClipboardList, IconDownload, IconActivity, IconClipboardCheck, IconPanelRightClose, IconPanelRightOpen, IconIdCard, IconUsers, IconBook, IconRotateCcw } from './icons/Icons';
 import ExamManagement from './ExamManagement';
 import { Ujian } from '../types';
 import QuestionBank from './QuestionBank';
@@ -9,8 +9,9 @@ import ParticipantManagement from './ParticipantManagement';
 import ActivityMonitor from './ActivityMonitor';
 import QuestionImport from './QuestionImport';
 import SubjectManagement from './SubjectManagement';
+import ResetExamParticipant from './ResetExamParticipant';
 
-type View = 'main' | 'exam_management' | 'question_bank' | 'question_import' | 'print_cards' | 'exam_results_analysis' | 'participant_management' | 'activity_monitor' | 'subject_management';
+type View = 'main' | 'exam_management' | 'question_bank' | 'question_import' | 'print_cards' | 'exam_results_analysis' | 'participant_management' | 'activity_monitor' | 'subject_management' | 'reset_participant';
 
 const GuruDashboard: React.FC = () => {
   const [view, setView] = useState<View>('main');
@@ -42,6 +43,7 @@ const GuruDashboard: React.FC = () => {
       case 'exam_results_analysis': return <ExamResultsAnalysis onBack={() => setView('main')} />;
       case 'participant_management': return <ParticipantManagement onBack={() => setView('main')} />;
       case 'activity_monitor': return <ActivityMonitor onBack={() => setView('main')} />;
+      case 'reset_participant': return <ResetExamParticipant onBack={() => setView('main')} />;
       case 'main':
       default:
         return (
@@ -113,6 +115,10 @@ const GuruDashboard: React.FC = () => {
            <button onClick={() => setView('participant_management')} className="w-full flex items-center p-3 bg-slate-100 dark:bg-slate-700 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 rounded-lg transition-colors space-x-3">
             <IconUsers className="h-5 w-5" />
             <span>Data Peserta Ujian</span>
+          </button>
+           <button onClick={() => setView('reset_participant')} className="w-full flex items-center p-3 bg-slate-100 dark:bg-slate-700 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 rounded-lg transition-colors space-x-3">
+            <IconRotateCcw className="h-5 w-5" />
+            <span>Reset Peserta Ujian</span>
           </button>
            <button onClick={() => setView('print_cards')} className="w-full flex items-center p-3 bg-slate-100 dark:bg-slate-700 hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 rounded-lg transition-colors space-x-3">
             <IconIdCard className="h-5 w-5" />

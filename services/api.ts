@@ -4,15 +4,70 @@ import { User, Ujian, Soal, JawabanSiswa, Hasil, AnswerOption, ExamResultWithUse
 // Simulate API delay
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-// Simulate mutable data stores by creating a deep copy
-let mockUsers: User[] = JSON.parse(JSON.stringify(USERS));
-let mockUjian: Ujian[] = JSON.parse(JSON.stringify(UJIAN_LIST));
-let mockSoal: Soal[] = JSON.parse(JSON.stringify(SOAL_LIST));
-let mockMataPelajaran: MataPelajaran[] = JSON.parse(JSON.stringify(MATA_PELAJARAN_LIST));
-let mockPaketSoal: PaketSoal[] = JSON.parse(JSON.stringify(PAKET_SOAL_LIST.map(p => ({ id_paket: p.id_paket, id_mapel: p.id_mapel, nama_paket: p.nama_paket }))));
-const mockHasil: Hasil[] = JSON.parse(JSON.stringify(HASIL_LIST));
-const mockActivityLogs: ActivityLog[] = [];
+// --- Mock Data Store ---
+let mockUsers: User[];
+let mockUjian: Ujian[];
+let mockSoal: Soal[];
+let mockMataPelajaran: MataPelajaran[];
+let mockPaketSoal: PaketSoal[];
+let mockHasil: Hasil[];
+let mockActivityLogs: ActivityLog[];
 
+const MOCK_DATA_KEY = 'cbt-mock-data';
+
+// Helper to re-hydrate Date objects from JSON strings
+const parseDates = (key: string, value: any) => {
+    if ((key === 'waktu_mulai' || key === 'tanggal' || key === 'timestamp') && typeof value === 'string') {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+            return date;
+        }
+    }
+    return value;
+};
+
+const saveMockData = () => {
+  try {
+    const data = {
+      mockUsers, mockUjian, mockSoal, mockMataPelajaran,
+      mockPaketSoal, mockHasil, mockActivityLogs,
+    };
+    sessionStorage.setItem(MOCK_DATA_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.error("Failed to save mock data to sessionStorage", e);
+  }
+};
+
+const loadMockData = () => {
+    try {
+        const savedData = sessionStorage.getItem(MOCK_DATA_KEY);
+        if (savedData) {
+            const parsedData = JSON.parse(savedData, parseDates);
+            mockUsers = parsedData.mockUsers || JSON.parse(JSON.stringify(USERS));
+            mockUjian = parsedData.mockUjian || JSON.parse(JSON.stringify(UJIAN_LIST), parseDates);
+            mockSoal = parsedData.mockSoal || JSON.parse(JSON.stringify(SOAL_LIST));
+            mockMataPelajaran = parsedData.mockMataPelajaran || JSON.parse(JSON.stringify(MATA_PELAJARAN_LIST));
+            mockPaketSoal = parsedData.mockPaketSoal || JSON.parse(JSON.stringify(PAKET_SOAL_LIST.map(p => ({ id_paket: p.id_paket, id_mapel: p.id_mapel, nama_paket: p.nama_paket }))));
+            mockHasil = parsedData.mockHasil || JSON.parse(JSON.stringify(HASIL_LIST), parseDates);
+            mockActivityLogs = parsedData.mockActivityLogs || [];
+        } else {
+            // Initialize from constants if no saved data
+            mockUsers = JSON.parse(JSON.stringify(USERS));
+            mockUjian = JSON.parse(JSON.stringify(UJIAN_LIST), parseDates);
+            mockSoal = JSON.parse(JSON.stringify(SOAL_LIST));
+            mockMataPelajaran = JSON.parse(JSON.stringify(MATA_PELAJARAN_LIST));
+            mockPaketSoal = JSON.parse(JSON.stringify(PAKET_SOAL_LIST.map(p => ({ id_paket: p.id_paket, id_mapel: p.id_mapel, nama_paket: p.nama_paket }))));
+            mockHasil = JSON.parse(JSON.stringify(HASIL_LIST), parseDates);
+            mockActivityLogs = [];
+            saveMockData();
+        }
+    } catch (e) {
+        console.error("Failed to load mock data, initializing from constants", e);
+    }
+};
+
+// Initialize data on module load
+loadMockData();
 
 export const login = async (username: string, password: string): Promise<User | null> => {
   await delay(500);
@@ -118,6 +173,7 @@ export const submitExam = async (id_user: number, id_ujian: number, answers: Jaw
 
   // Persist the result in the mock database for the "take once" logic to work
   mockHasil.push(result);
+  saveMockData();
 
   return result;
 };
@@ -131,6 +187,7 @@ export const addUser = async (userData: Omit<User, 'id_user'>): Promise<User> =>
     await delay(500);
     const newUser: User = { ...userData, id_user: Date.now() + Math.random() };
     mockUsers.push(newUser);
+    saveMockData();
     const { password, ...userWithoutPassword } = newUser;
     return userWithoutPassword;
 };
@@ -141,6 +198,7 @@ export const updateUser = async (userId: number, userData: Partial<User>): Promi
         const { password, ...rest } = userData;
         mockUsers[userIndex] = { ...mockUsers[userIndex], ...rest };
         if (password) mockUsers[userIndex].password = password;
+        saveMockData();
         const { password: pw, ...userWithoutPassword } = mockUsers[userIndex];
         return userWithoutPassword;
     }
@@ -151,6 +209,7 @@ export const deleteUser = async (userId: number): Promise<{ success: boolean }> 
     if (userId === 1) return { success: false };
     const initialLength = mockUsers.length;
     mockUsers = mockUsers.filter(u => u.id_user !== userId);
+    saveMockData();
     return { success: mockUsers.length < initialLength };
 };
 
@@ -163,6 +222,7 @@ export const addMataPelajaran = async (data: Omit<MataPelajaran, 'id_mapel'>): P
     await delay(300);
     const newMapel = { ...data, id_mapel: Date.now() + Math.random() };
     mockMataPelajaran.push(newMapel);
+    saveMockData();
     return newMapel;
 }
 export const updateMataPelajaran = async (id_mapel: number, data: Partial<MataPelajaran>): Promise<MataPelajaran | null> => {
@@ -170,6 +230,7 @@ export const updateMataPelajaran = async (id_mapel: number, data: Partial<MataPe
     const index = mockMataPelajaran.findIndex(m => m.id_mapel === id_mapel);
     if (index !== -1) {
         mockMataPelajaran[index] = { ...mockMataPelajaran[index], ...data };
+        saveMockData();
         return mockMataPelajaran[index];
     }
     return null;
@@ -177,7 +238,7 @@ export const updateMataPelajaran = async (id_mapel: number, data: Partial<MataPe
 export const deleteMataPelajaran = async (id_mapel: number): Promise<{ success: boolean }> => {
     await delay(300);
     mockMataPelajaran = mockMataPelajaran.filter(m => m.id_mapel !== id_mapel);
-    // In a real DB, you'd handle cascading deletes or prevent deletion if in use.
+    saveMockData();
     return { success: true };
 }
 
@@ -198,6 +259,7 @@ export const addPaketSoal = async (data: Omit<PaketSoal, 'id_paket'>): Promise<P
     await delay(300);
     const newPaket = { ...data, id_paket: Date.now() + Math.random() };
     mockPaketSoal.push(newPaket);
+    saveMockData();
     return newPaket;
 }
 export const updatePaketSoal = async (id_paket: number, data: Partial<PaketSoal>): Promise<PaketSoal | null> => {
@@ -205,6 +267,7 @@ export const updatePaketSoal = async (id_paket: number, data: Partial<PaketSoal>
     const index = mockPaketSoal.findIndex(p => p.id_paket === id_paket);
     if (index !== -1) {
         mockPaketSoal[index] = { ...mockPaketSoal[index], ...data };
+        saveMockData();
         return mockPaketSoal[index];
     }
     return null;
@@ -214,6 +277,7 @@ export const deletePaketSoal = async (id_paket: number): Promise<{ success: bool
     mockPaketSoal = mockPaketSoal.filter(p => p.id_paket !== id_paket);
     mockSoal = mockSoal.filter(s => s.id_paket !== id_paket);
     mockUjian = mockUjian.filter(u => u.id_paket !== id_paket);
+    saveMockData();
     return { success: true };
 }
 
@@ -242,6 +306,7 @@ export const addExam = async (examData: Omit<Ujian, 'id_ujian' | 'token' | 'is_a
         is_active: false, // Exams are inactive by default
     };
     mockUjian.push(newExam);
+    saveMockData();
     return newExam;
 };
 export const updateExam = async (examId: number, examData: Partial<Omit<Ujian, 'id_ujian'>>): Promise<Ujian | null> => {
@@ -249,6 +314,7 @@ export const updateExam = async (examId: number, examData: Partial<Omit<Ujian, '
     const examIndex = mockUjian.findIndex(u => u.id_ujian === examId);
     if (examIndex !== -1) {
         mockUjian[examIndex] = { ...mockUjian[examIndex], ...examData };
+        saveMockData();
         return mockUjian[examIndex];
     }
     return null;
@@ -256,13 +322,11 @@ export const updateExam = async (examId: number, examData: Partial<Omit<Ujian, '
 export const deleteExam = async (examId: number): Promise<{ success: boolean }> => {
     await delay(500);
     mockUjian = mockUjian.filter(u => u.id_ujian !== examId);
+    saveMockData();
     return { success: true };
 };
 
 // --- Question Management ---
-const updatePaketQuestionCount = (paketId: number) => {
-    // This is a helper, not exported. In a real app, a DB trigger or backend logic would handle this.
-};
 export const getQuestionsForPaket = async (id_paket: number): Promise<Soal[]> => {
     await delay(500);
     return mockSoal.filter(s => s.id_paket === id_paket);
@@ -272,7 +336,7 @@ export const addQuestion = async (questionData: Omit<Soal, 'id_soal'>): Promise<
     const newQuestion: Soal = { ...questionData, id_soal: Date.now() + Math.random() };
     if (newQuestion.jumlah_opsi === 4) delete newQuestion.opsi_e;
     mockSoal.push(newQuestion);
-    updatePaketQuestionCount(newQuestion.id_paket);
+    saveMockData();
     return newQuestion;
 };
 export const updateQuestion = async (questionId: number, questionData: Partial<Omit<Soal, 'id_soal'>>): Promise<Soal | null> => {
@@ -281,6 +345,7 @@ export const updateQuestion = async (questionId: number, questionData: Partial<O
     if (questionIndex !== -1) {
         mockSoal[questionIndex] = { ...mockSoal[questionIndex], ...questionData };
         if (mockSoal[questionIndex].jumlah_opsi === 4) delete mockSoal[questionIndex].opsi_e;
+        saveMockData();
         return mockSoal[questionIndex];
     }
     return null;
@@ -288,6 +353,7 @@ export const updateQuestion = async (questionId: number, questionData: Partial<O
 export const deleteQuestion = async (questionId: number): Promise<{ success: boolean }> => {
     await delay(500);
     mockSoal = mockSoal.filter(s => s.id_soal !== questionId);
+    saveMockData();
     return { success: true };
 };
 
@@ -305,10 +371,50 @@ export const getResultsForExam = async (examId: number): Promise<ExamResultWithU
     return resultsWithUser;
 }
 
+export const resetExamForUser = async (userId: number, examId: number): Promise<{ success: boolean }> => {
+    await delay(300);
+    const initialLength = mockHasil.length;
+    const resultIndex = mockHasil.findIndex(h => h.id_user === userId && h.id_ujian === examId);
+    if (resultIndex > -1) {
+        mockHasil.splice(resultIndex, 1);
+        saveMockData();
+        return { success: true };
+    }
+    return { success: false };
+};
+
+export interface FullResultDetails extends ExamResultWithUser {
+  exam: {
+    id_ujian: number;
+    nama_paket: string;
+  };
+}
+
+export const getAllResults = async (): Promise<FullResultDetails[]> => {
+    await delay(700);
+    const allResults = mockHasil.map(result => {
+        const user = mockUsers.find(u => u.id_user === result.id_user);
+        const exam = mockUjian.find(u => u.id_ujian === result.id_ujian);
+        const paket = exam ? mockPaketSoal.find(p => p.id_paket === exam.id_paket) : undefined;
+        
+        return {
+            ...result,
+            user: user ? { ...user, password: '' } : { id_user: 0, username: 'Unknown', nama_lengkap: 'Unknown User', role: Role.SISWA },
+            exam: {
+                id_ujian: exam?.id_ujian || 0,
+                nama_paket: paket?.nama_paket || 'Ujian Tidak Ditemukan'
+            }
+        };
+    }).sort((a, b) => b.tanggal.getTime() - a.tanggal.getTime()); // Sort by most recent first
+    return allResults;
+};
+
+
 // --- Activity Monitoring ---
 export const logActivity = async (id_user: number, id_ujian: number, activity_type: ActivityType): Promise<{ success: boolean }> => {
     const newLog: ActivityLog = { id_log: Date.now() + Math.random(), id_user, id_ujian, activity_type, timestamp: new Date() };
     mockActivityLogs.push(newLog);
+    saveMockData();
     console.log("Activity Logged:", newLog); // For debugging
     return { success: true };
 };
