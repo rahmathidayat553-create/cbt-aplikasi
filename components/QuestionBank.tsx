@@ -63,13 +63,14 @@ const QuestionFormModal: React.FC<{
               placeholder="Pertanyaan"
               minHeight="120px"
             />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <TextEditor value={formData.opsi_a || ''} onChange={(value) => handleEditorChange('opsi_a', value)} placeholder="Opsi A" />
               <TextEditor value={formData.opsi_b || ''} onChange={(value) => handleEditorChange('opsi_b', value)} placeholder="Opsi B" />
               <TextEditor value={formData.opsi_c || ''} onChange={(value) => handleEditorChange('opsi_c', value)} placeholder="Opsi C" />
               <TextEditor value={formData.opsi_d || ''} onChange={(value) => handleEditorChange('opsi_d', value)} placeholder="Opsi D" />
+              {formData.jumlah_opsi === 5 && <TextEditor value={formData.opsi_e || ''} onChange={(value) => handleEditorChange('opsi_e', value)} placeholder="Opsi E" />}
             </div>
-            {formData.jumlah_opsi === 5 && <TextEditor value={formData.opsi_e || ''} onChange={(value) => handleEditorChange('opsi_e', value)} placeholder="Opsi E" />}
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <select name="jumlah_opsi" value={formData.jumlah_opsi} onChange={handleJumlahOpsiChange} className="input-field">
                     <option value={4}>4 Opsi</option>
