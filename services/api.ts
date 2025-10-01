@@ -181,7 +181,7 @@ export const submitExam = async (id_user: number, id_ujian: number, answers: Jaw
 // --- User Management ---
 export const getUsers = async (): Promise<User[]> => {
     await delay(500);
-    return mockUsers.map(({ password, ...user }) => user);
+    return JSON.parse(JSON.stringify(mockUsers));
 };
 export const addUser = async (userData: Omit<User, 'id_user'>): Promise<User> => {
     await delay(500);

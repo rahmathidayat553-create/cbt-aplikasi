@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { User, Role } from '../types';
 import { getUsers, addUser } from '../services/api';
-import { IconArrowLeft, IconPlus, IconUsers, IconDownload, IconUpload, IconLoader, IconUserCheck, IconFileSpreadsheet } from './icons/Icons';
+import { IconArrowLeft, IconPlus, IconUsers, IconDownload, IconUpload, IconLoader, IconUserCheck, IconFileSpreadsheet, IconCopy, IconCheckCircle } from './icons/Icons';
 
 type NewUserWithPassword = Omit<User, 'id_user' | 'role'> & { password?: string };
 
@@ -123,6 +123,7 @@ const ParticipantManagement: React.FC<{ onBack: () => void }> = ({ onBack }) => 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [newlyImported, setNewlyImported] = useState<NewUserWithPassword[]>([]);
+  const [copiedUserId, setCopiedUserId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchStudents = useCallback(async () => {
@@ -141,6 +142,14 @@ const ParticipantManagement: React.FC<{ onBack: () => void }> = ({ onBack }) => 
     setIsModalOpen(false);
     alert(`Peserta ${userData.nama_lengkap} berhasil ditambahkan.\nPassword: ${userData.password}`);
     fetchStudents();
+  };
+  
+  const handleCopyPassword = (password: string, userId: number) => {
+    if (!password) return;
+    navigator.clipboard.writeText(password).then(() => {
+        setCopiedUserId(userId);
+        setTimeout(() => setCopiedUserId(null), 2000);
+    });
   };
 
   const handleDownloadTemplate = () => {
@@ -278,6 +287,7 @@ const ParticipantManagement: React.FC<{ onBack: () => void }> = ({ onBack }) => 
                   <th scope="col" className="px-6 py-3">Nama Lengkap</th>
                   <th scope="col" className="px-6 py-3">Username</th>
                   <th scope="col" className="px-6 py-3">Kelas</th>
+                  <th scope="col" className="px-6 py-3">Password</th>
                 </tr>
               </thead>
               <tbody>
@@ -286,6 +296,22 @@ const ParticipantManagement: React.FC<{ onBack: () => void }> = ({ onBack }) => 
                     <td className="px-6 py-4 font-medium text-slate-900 dark:text-white whitespace-nowrap">{user.nama_lengkap}</td>
                     <td className="px-6 py-4">{user.username}</td>
                     <td className="px-6 py-4">{user.kelas || '-'}</td>
+                    <td className="px-6 py-4">
+                        <div className="flex items-center space-x-2">
+                            <span className="font-mono bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-sm">{user.password}</span>
+                            <button 
+                                onClick={() => handleCopyPassword(user.password || '', user.id_user)}
+                                className="p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-md transition-colors"
+                                aria-label="Salin password"
+                                title="Salin password"
+                            >
+                                {copiedUserId === user.id_user ? 
+                                    <IconCheckCircle className="h-4 w-4 text-green-500" /> : 
+                                    <IconCopy className="h-4 w-4" />
+                                }
+                            </button>
+                        </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
