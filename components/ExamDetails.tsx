@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Ujian as BaseUjian, Soal, AnswerOption } from '../types';
 import { getQuestionsForExam, addQuestion, updateQuestion, deleteQuestion } from '../services/api';
 import { IconArrowLeft, IconEdit, IconLoader, IconPlus, IconTrash, IconFileText, IconClock, IconBookOpen, IconImage, IconVolume2, IconVideo, IconYoutube, IconX } from './icons/Icons';
+import TextEditor from './TextEditor';
 
 // FIX: Define a more detailed Ujian type.
 type Ujian = BaseUjian & { nama_paket: string; mata_pelajaran: string };
@@ -69,6 +70,10 @@ const QuestionFormModal: React.FC<{
        setVideoType('youtube');
     }
   }, [initialData, isOpen]);
+  
+  const handleEditorChange = (name: keyof Soal, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -159,17 +164,22 @@ const QuestionFormModal: React.FC<{
       <div className="bg-white dark:bg-slate-800 rounded-lg p-8 shadow-xl max-w-2xl w-full">
         <h2 className="text-2xl font-bold mb-6">{initialData ? 'Edit Soal' : 'Tambah Soal Baru'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-            <textarea name="pertanyaan" value={formData.pertanyaan} onChange={handleChange} placeholder="Tulis pertanyaan di sini..." rows={4} className="input-field" required />
+            <TextEditor
+              value={formData.pertanyaan || ''}
+              onChange={(value) => handleEditorChange('pertanyaan', value)}
+              placeholder="Tulis pertanyaan di sini..."
+              minHeight="120px"
+            />
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input name="opsi_a" value={formData.opsi_a} onChange={handleChange} placeholder="Opsi A" className="input-field" required />
-                <input name="opsi_b" value={formData.opsi_b} onChange={handleChange} placeholder="Opsi B" className="input-field" required />
-                <input name="opsi_c" value={formData.opsi_c} onChange={handleChange} placeholder="Opsi C" className="input-field" required />
-                <input name="opsi_d" value={formData.opsi_d} onChange={handleChange} placeholder="Opsi D" className="input-field" required />
+                <TextEditor value={formData.opsi_a || ''} onChange={(value) => handleEditorChange('opsi_a', value)} placeholder="Opsi A" />
+                <TextEditor value={formData.opsi_b || ''} onChange={(value) => handleEditorChange('opsi_b', value)} placeholder="Opsi B" />
+                <TextEditor value={formData.opsi_c || ''} onChange={(value) => handleEditorChange('opsi_c', value)} placeholder="Opsi C" />
+                <TextEditor value={formData.opsi_d || ''} onChange={(value) => handleEditorChange('opsi_d', value)} placeholder="Opsi D" />
             </div>
 
              {formData.jumlah_opsi === 5 && (
-                <input name="opsi_e" value={formData.opsi_e} onChange={handleChange} placeholder="Opsi E" className="input-field" required />
+                <TextEditor value={formData.opsi_e || ''} onChange={(value) => handleEditorChange('opsi_e', value)} placeholder="Opsi E" />
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -351,7 +361,7 @@ const ExamDetails: React.FC<ExamDetailsProps> = ({ exam, onBack }) => {
               <div className="flex justify-between items-start">
                   <div className="flex-grow">
                       <p className="font-semibold text-slate-500 dark:text-slate-400 text-sm">Soal #{index + 1}</p>
-                      <p className="mt-1 text-slate-800 dark:text-slate-200" dangerouslySetInnerHTML={{ __html: q.pertanyaan }} />
+                      <div className="mt-1 text-slate-800 dark:text-slate-200 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: q.pertanyaan }} />
                       <div className="flex items-center space-x-2 mt-2">
                           {q.gambar && <span title="Gambar terlampir"><IconImage className="h-4 w-4 text-slate-500" /></span>}
                           {q.audio && <span title="Audio terlampir"><IconVolume2 className="h-4 w-4 text-slate-500" /></span>}
@@ -363,12 +373,12 @@ const ExamDetails: React.FC<ExamDetailsProps> = ({ exam, onBack }) => {
                       <button onClick={() => setDeletingQuestion(q)} className="p-2 text-red-500 hover:bg-red-500/10 rounded-full" aria-label="Delete"><IconTrash className="h-5 w-5"/></button>
                   </div>
               </div>
-               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                  <p className={q.jawaban_benar === 'A' ? 'text-green-600 dark:text-green-400 font-bold' : ''}>A. {q.opsi_a}</p>
-                  <p className={q.jawaban_benar === 'B' ? 'text-green-600 dark:text-green-400 font-bold' : ''}>B. {q.opsi_b}</p>
-                  <p className={q.jawaban_benar === 'C' ? 'text-green-600 dark:text-green-400 font-bold' : ''}>C. {q.opsi_c}</p>
-                  <p className={q.jawaban_benar === 'D' ? 'text-green-600 dark:text-green-400 font-bold' : ''}>D. {q.opsi_d}</p>
-                  {q.opsi_e && <p className={q.jawaban_benar === 'E' ? 'text-green-600 dark:text-green-400 font-bold' : ''}>E. {q.opsi_e}</p>}
+               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm prose dark:prose-invert max-w-none">
+                  <div className={q.jawaban_benar === 'A' ? 'text-green-600 dark:text-green-400 font-bold' : ''}><span className="font-bold">A. </span><span dangerouslySetInnerHTML={{__html: q.opsi_a}}/></div>
+                  <div className={q.jawaban_benar === 'B' ? 'text-green-600 dark:text-green-400 font-bold' : ''}><span className="font-bold">B. </span><span dangerouslySetInnerHTML={{__html: q.opsi_b}}/></div>
+                  <div className={q.jawaban_benar === 'C' ? 'text-green-600 dark:text-green-400 font-bold' : ''}><span className="font-bold">C. </span><span dangerouslySetInnerHTML={{__html: q.opsi_c}}/></div>
+                  <div className={q.jawaban_benar === 'D' ? 'text-green-600 dark:text-green-400 font-bold' : ''}><span className="font-bold">D. </span><span dangerouslySetInnerHTML={{__html: q.opsi_d}}/></div>
+                  {q.opsi_e && <div className={q.jawaban_benar === 'E' ? 'text-green-600 dark:text-green-400 font-bold' : ''}><span className="font-bold">E. </span><span dangerouslySetInnerHTML={{__html: q.opsi_e}}/></div>}
               </div>
             </div>
           ))}

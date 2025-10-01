@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { MataPelajaran, PaketSoal, Soal, AnswerOption } from '../types';
 import { getPaketSoal, addPaketSoal, updatePaketSoal, deletePaketSoal, getMataPelajaran, getQuestionsForPaket, addQuestion, updateQuestion, deleteQuestion } from '../services/api';
 import { IconArrowLeft, IconEdit, IconLoader, IconPlus, IconTrash, IconFileText, IconBookOpen, IconFilter } from './icons/Icons';
+import TextEditor from './TextEditor';
 
 // Sub-component for Question Form (similar to the one in old ExamDetails)
 const QuestionFormModal: React.FC<{
@@ -22,6 +23,10 @@ const QuestionFormModal: React.FC<{
         jawaban_benar: AnswerOption.A, jumlah_opsi: 4,
     });
   }, [initialData, isOpen]);
+
+  const handleEditorChange = (name: keyof Soal, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -52,14 +57,19 @@ const QuestionFormModal: React.FC<{
       <div className="bg-white dark:bg-slate-800 rounded-lg p-8 shadow-xl max-w-2xl w-full">
         <h2 className="text-2xl font-bold mb-6">{initialData ? 'Edit Soal' : 'Tambah Soal'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-            <textarea name="pertanyaan" value={formData.pertanyaan} onChange={handleChange} placeholder="Pertanyaan" rows={3} className="input-field" required />
+            <TextEditor
+              value={formData.pertanyaan || ''}
+              onChange={(value) => handleEditorChange('pertanyaan', value)}
+              placeholder="Pertanyaan"
+              minHeight="120px"
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input name="opsi_a" value={formData.opsi_a} onChange={handleChange} placeholder="Opsi A" className="input-field" required />
-                <input name="opsi_b" value={formData.opsi_b} onChange={handleChange} placeholder="Opsi B" className="input-field" required />
-                <input name="opsi_c" value={formData.opsi_c} onChange={handleChange} placeholder="Opsi C" className="input-field" required />
-                <input name="opsi_d" value={formData.opsi_d} onChange={handleChange} placeholder="Opsi D" className="input-field" required />
+              <TextEditor value={formData.opsi_a || ''} onChange={(value) => handleEditorChange('opsi_a', value)} placeholder="Opsi A" />
+              <TextEditor value={formData.opsi_b || ''} onChange={(value) => handleEditorChange('opsi_b', value)} placeholder="Opsi B" />
+              <TextEditor value={formData.opsi_c || ''} onChange={(value) => handleEditorChange('opsi_c', value)} placeholder="Opsi C" />
+              <TextEditor value={formData.opsi_d || ''} onChange={(value) => handleEditorChange('opsi_d', value)} placeholder="Opsi D" />
             </div>
-            {formData.jumlah_opsi === 5 && <input name="opsi_e" value={formData.opsi_e} onChange={handleChange} placeholder="Opsi E" className="input-field" />}
+            {formData.jumlah_opsi === 5 && <TextEditor value={formData.opsi_e || ''} onChange={(value) => handleEditorChange('opsi_e', value)} placeholder="Opsi E" />}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <select name="jumlah_opsi" value={formData.jumlah_opsi} onChange={handleJumlahOpsiChange} className="input-field">
                     <option value={4}>4 Opsi</option>
@@ -155,7 +165,7 @@ const PaketSoalDetailView: React.FC<{
             {questions.map((q, i) => (
               <div key={q.id_soal} className="p-4 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700">
                 <div className="flex justify-between items-start">
-                  <p className="flex-grow"><span className="font-bold">{i+1}.</span> <span dangerouslySetInnerHTML={{__html: q.pertanyaan}} /></p>
+                  <div className="flex-grow prose dark:prose-invert max-w-none"><span className="font-bold">{i+1}.</span> <span dangerouslySetInnerHTML={{__html: q.pertanyaan}} /></div>
                   <div className="flex-shrink-0 ml-4 space-x-1">
                       <button onClick={() => { setEditingQuestion(q); setIsModalOpen(true); }} className="p-2 text-yellow-500"><IconEdit className="h-5 w-5"/></button>
                       <button onClick={() => handleDeleteQuestion(q.id_soal)} className="p-2 text-red-500"><IconTrash className="h-5 w-5"/></button>
