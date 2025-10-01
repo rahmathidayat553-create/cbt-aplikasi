@@ -181,6 +181,9 @@ export const submitExam = async (id_user: number, id_ujian: number, answers: Jaw
 // --- User Management ---
 export const getUsers = async (): Promise<User[]> => {
     await delay(500);
+    // FIX: Return a deep copy of the mockUsers array to ensure the password field is always included.
+    // This resolves the issue where newly created users couldn't log in because their passwords
+    // were being stripped from the object returned to the management components.
     return JSON.parse(JSON.stringify(mockUsers));
 };
 export const addUser = async (userData: Omit<User, 'id_user'>): Promise<User> => {
